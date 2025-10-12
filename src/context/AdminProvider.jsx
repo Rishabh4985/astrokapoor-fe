@@ -3,11 +3,9 @@ import { AdminContext } from "./AdminContext";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
 
-
 const API_BASE = import.meta.env.DEV
   ? "http://localhost:4000/api/admin"
   : `${import.meta.env.VITE_API_URL}/admin`;
-
 
 const formatDate = (date) => {
   if (!date) return "";
@@ -123,7 +121,13 @@ const AdminProvider = ({ children }) => {
 
       if (!isMountedRef.current) return;
 
-      const cleanedData = res.data.map(cleanRecord);
+      const dataArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.records)
+        ? res.data.records
+        : [];
+
+      const cleanedData = dataArray.map(cleanRecord);
       setAllRecords(cleanedData);
     } catch (error) {
       if (!isMountedRef.current) return;

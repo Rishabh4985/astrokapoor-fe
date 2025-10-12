@@ -4,11 +4,9 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 
-
 const API_BASE = import.meta.env.DEV
   ? "http://localhost:4000/api/seller"
   : `${import.meta.env.VITE_API_URL}/seller`;
-
 
 const formatDate = (date) => {
   if (!date) return "";
@@ -88,7 +86,13 @@ const SellerProvider = ({ children }) => {
         timeout: 15000,
       });
 
-      const cleanedData = res.data.map(cleanRecord);
+      const dataArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.records)
+        ? res.data.records
+        : [];
+
+      const cleanedData = dataArray.map(cleanRecord);
       setAllRecords(cleanedData);
     } catch (error) {
       console.log("Failed to fetch all records for charts", error);
@@ -241,7 +245,13 @@ const SellerProvider = ({ children }) => {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
-      const cleanedData = res.data.map(cleanRecord);
+      const dataArray = Array.isArray(res.data)
+        ? res.data
+        : Array.isArray(res.data.records)
+        ? res.data.records
+        : [];
+
+      const cleanedData = dataArray.map(cleanRecord);
       setSellerRecords(cleanedData);
     } catch (error) {
       console.error("Failed to fetch records", error);
