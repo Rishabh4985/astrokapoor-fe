@@ -13,7 +13,7 @@ const LoginComponent = ({ onLogin }) => {
   const navigate = useNavigate();
 
   const API_URL = import.meta.env.DEV
-  ? "http://localhost:4000"
+  ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
 

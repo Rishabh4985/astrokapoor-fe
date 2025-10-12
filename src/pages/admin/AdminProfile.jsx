@@ -3,7 +3,7 @@ import { Camera, Lock, Mail, User } from "lucide-react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.DEV
-  ? "http://localhost:4000"
+  ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
 const api = axios.create({
