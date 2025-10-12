@@ -2,8 +2,12 @@ import React, { useState, useEffect } from "react";
 import { Camera, Lock, Mail, User } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000"
+  : import.meta.env.VITE_API_URL;
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL,
+  baseURL: API_BASE,
 });
 
 const AdminProfile = () => {

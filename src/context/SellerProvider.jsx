@@ -4,6 +4,12 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 
+
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000/api/seller"
+  : `${import.meta.env.VITE_API_URL}/seller`;
+
+
 const formatDate = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -48,7 +54,7 @@ const SellerProvider = ({ children }) => {
         setLoading(true);
 
         const res = await axios.get(
-          `/api/seller/records/paginated?page=${pageNumber}&limit=${limit}`,
+          `${API_BASE}/records/paginated?page=${pageNumber}&limit=${limit}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
@@ -77,7 +83,7 @@ const SellerProvider = ({ children }) => {
       setLoadingCharts(true);
       if (!authToken) return;
 
-      const res = await axios.get(`/api/seller/records/charts`, {
+      const res = await axios.get(`${API_BASE}/records/charts`, {
         headers: { Authorization: `Bearer ${authToken}` },
         timeout: 15000,
       });
@@ -157,7 +163,7 @@ const SellerProvider = ({ children }) => {
           handlerId: sellerEmail,
         };
 
-        const res = await axios.post("/api/seller/records", recordToSend, {
+        const res = await axios.post(`${API_BASE}/records`, recordToSend, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
@@ -196,7 +202,7 @@ const SellerProvider = ({ children }) => {
       try {
         if (!authToken) throw new Error("No Auth Token");
 
-        await axios.patch(`/api/seller/records/${record._id}`, record, {
+        await axios.patch(`${API_BASE}/records/${record._id}`, record, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
@@ -231,7 +237,7 @@ const SellerProvider = ({ children }) => {
     try {
       if (!authToken) throw new Error("No Auth Token");
 
-      const res = await axios.get("/api/seller/records", {
+      const res = await axios.get(`${API_BASE}/records`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 

@@ -2,20 +2,24 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000"
+  : import.meta.env.VITE_API_URL;
+
+
 const AdminForgotPassword = () => {
   const [email, setEmail] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/send-otp`, { email });
+      const res = await axios.post(`${API_BASE}/send-otp`, { email });
+
       setMessage(
         res.data.message || "OTP sent to your email. Please check your inbox."
       );

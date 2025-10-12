@@ -47,7 +47,7 @@ const defaultFormData = {
 const requiredFields = ["dateOfPayment", "customerName", "amount", "service"];
 
 const AddRecordForm = ({ onAdd }) => {
-const { authToken, userRole } = useAuth();
+  const { authToken, userRole } = useAuth();
   const seller = JSON.parse(localStorage.getItem("currentSeller"));
   const isSeller = !!seller?.email;
   const [formData, setFormData] = useState({
@@ -142,27 +142,32 @@ const { authToken, userRole } = useAuth();
     } finally {
       setIsSubmitting(false);
     }
-  };;
-  
-const handleUserSearch = async () => {
+  };
+
+  const handleUserSearch = async () => {
     if (!searchEmail.trim()) {
       toast.error("Please enter search keyword.");
       return;
     }
-const baseUrl = userRole === "admin"
-    ? "/api/admin"
-    : userRole === "seller"
-    ? "/api/seller"
-    : "/api"; // fallback if other roles added
 
-  const url = `${baseUrl}/users/search?keyword=${encodeURIComponent(searchEmail.trim())}`;
+    const API_BASE = import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL;
 
+    const baseUrl =
+      userRole === "admin"
+        ? `${API_BASE}/admin`
+        : userRole === "seller"
+        ? `${API_BASE}/seller`
+        : `${API_BASE}`;
+
+    const url = `${baseUrl}/users/search?keyword=${encodeURIComponent(
+      searchEmail.trim()
+    )}`;
 
     try {
       const response = await fetch(url, {
         headers: {
           Authorization: `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
       });
 
@@ -201,7 +206,7 @@ const baseUrl = userRole === "admin"
       toast.error("Error searching user.");
     }
   };
-  
+
   const handleEditExistingUser = () => {
     if (!existingUserData) return;
 

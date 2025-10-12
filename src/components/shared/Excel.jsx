@@ -70,13 +70,18 @@ const Excel = ({ onImport, onExport }) => {
     for (let i = 0; i < records.length; i += chunkSize) {
       const chunk = records.slice(i, i + chunkSize);
       try {
+        const API_BASE = import.meta.env.DEV
+          ? ""
+          : import.meta.env.VITE_API_URL;
+
         await axios.post(
-          "/api/admin/import-records",
+          `${API_BASE}/admin/import-records`,
           { records: chunk },
           {
             headers: { Authorization: `Bearer ${token}` },
           }
         );
+
         toast.info(`Uploaded records ${i + 1} to ${i + chunk.length}`);
       } catch (err) {
         console.error("Chunk upload failed:", err);

@@ -2,6 +2,11 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000"
+  : import.meta.env.VITE_API_URL;
+
+
 const AdminVerifyOtp = () => {
   const { state } = useLocation();
   const navigate = useNavigate();
@@ -21,11 +26,12 @@ const AdminVerifyOtp = () => {
     }
 
     try {
-      await axios.post(`${import.meta.env.VITE_API_URL}/admin/reset-password`, {
-        email,
-        otp,
-        newPassword,
-      });
+     await axios.post(`${API_BASE}/admin/reset-password`, {
+  email,
+  otp,
+  newPassword,
+});
+
 
       setMessage("Password reset successfully. Redirecting to login...");
       setTimeout(() => navigate("/admin/login"), 2000);

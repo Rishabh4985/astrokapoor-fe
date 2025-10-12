@@ -3,6 +3,12 @@ import { AdminContext } from "./AdminContext";
 import axios from "axios";
 import { useAuth } from "./AuthContext";
 
+
+const API_BASE = import.meta.env.DEV
+  ? "http://localhost:4000/api/admin"
+  : `${import.meta.env.VITE_API_URL}/admin`;
+
+
 const formatDate = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -65,7 +71,7 @@ const AdminProvider = ({ children }) => {
         }
 
         const res = await axios.get(
-          `/api/admin/records?page=${pageNumber}&limit=${limit}`,
+          `${API_BASE}/records?page=${pageNumber}&limit=${limit}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
             timeout: 10000,
@@ -110,7 +116,7 @@ const AdminProvider = ({ children }) => {
         return;
       }
 
-      const res = await axios.get(`/api/admin/records/all`, {
+      const res = await axios.get(`${API_BASE}/records/all`, {
         headers: { Authorization: `Bearer ${authToken}` },
         timeout: 30000,
       });
@@ -199,7 +205,7 @@ const AdminProvider = ({ children }) => {
           customerName: newRecord.customerName || "Unknown",
         };
 
-        const res = await axios.post("/api/admin/records", recordToSend, {
+        const res = await axios.post(`${API_BASE}/records`, recordToSend, {
           headers: { Authorization: `Bearer ${authToken}` },
           timeout: 10000,
         });
