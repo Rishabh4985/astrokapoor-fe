@@ -57,16 +57,24 @@ const SellerProvider = ({ children }) => {
             headers: { Authorization: `Bearer ${authToken}` },
           }
         );
+        
+console.log("Seller records API response:", res.data);
 
-        const { records: fetchedRecords, totalPages, totalRecords } = res.data;
-        const cleanedData = fetchedRecords.map(cleanRecord);
+const dataArray = Array.isArray(res.data.records)
+  ? res.data.records
+  : Array.isArray(res.data)
+  ? res.data
+  : [];
 
-        setSellerRecords(cleanedData);
-        setTotalPages(totalPages);
-        setTotalRecords(totalRecords);
-        setPage(pageNumber);
+const cleanedData = dataArray.map(cleanRecord);
 
-        sessionStorage.setItem("userList", JSON.stringify(cleanedData));
+setSellerRecords(cleanedData);
+setTotalPages(res.data.totalPages || 1);
+setTotalRecords(res.data.totalRecords || cleanedData.length);
+setPage(pageNumber);
+
+sessionStorage.setItem("userList", JSON.stringify(cleanedData));
+
       } catch (error) {
         console.log("Failed to fetch data", error);
       } finally {

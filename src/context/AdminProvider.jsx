@@ -77,15 +77,16 @@ const AdminProvider = ({ children }) => {
         );
 
         if (!isMountedRef.current) return;
+        console.log("Fetched records response:", res.data);
 
-        const { records: fetchedRecords, totalPages, totalRecords } = res.data;
-
-        const cleanedData = fetchedRecords.map(cleanRecord);
+        const dataArray = Array.isArray(res.data.records)
+          ? res.data.records
+          : [];
+        const cleanedData = dataArray.map(cleanRecord);
 
         setRecords(cleanedData);
-        // setAllRecords(cleanedData);
-        setTotalPages(totalPages);
-        setTotalRecords(totalRecords);
+        setTotalPages(res.data.totalPages || 1);
+        setTotalRecords(res.data.totalRecords || cleanedData.length);
         setPage(pageNumber);
       } catch (error) {
         if (!isMountedRef.current) return;
