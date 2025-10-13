@@ -28,7 +28,8 @@ const AdminProvider = ({ children }) => {
   const [loading, setLoading] = useState(false);
 
   const [allRecords, setAllRecords] = useState([]);
-  const [loadingCharts, setLoadingCharts] = useState(false);
+const [loadingAll, setLoadingAll] = useState(false);
+
 
   const isMountedRef = useRef(true);
 
@@ -53,6 +54,26 @@ const AdminProvider = ({ children }) => {
       dateOfPayment: formatDate(filtered.dateOfPayment),
     };
   }, []);
+
+  const fetchAllRecords = useCallback(async () => {
+  if (!authToken) return;
+  try {
+    setLoadingAll(true);
+    setError(null);
+    const res = await axios.get(`${API_BASE}/records/all`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+      timeout: 60000,
+    });
+    const cleanedData = Array.isArray(res.data) ? res.data.map(cleanRecord) : [];
+    setAllRecords(cleanedData);
+  } catch (error) {
+    console.error("Failed to fetch all records", error);
+    setError("Failed to fetch ALL records. Please try again.");
+  } finally {
+    setLoadingAll(false);
+  }
+}, [authToken, cleanRecord]);
+
 
   //fetch records
   const fetchRecords = useCallback(
@@ -102,45 +123,15 @@ const AdminProvider = ({ children }) => {
     [authToken, limit, cleanRecord]
   );
 
-  //chart records
-  const fetchAllRecordsForCharts = useCallback(async () => {
-    if (!isMountedRef.current) return;
+  useEffect(() => {
+  if (!authToken) {
+    return;
+  }
+  fetchRecords(1);
+  fetchAllRecords();
+}, [authToken, fetchRecords, fetchAllRecords]);
 
-    try {
-      setLoadingCharts(true);
-      setError(null);
 
-      if (!authToken) {
-        console.warn("fetchAllRecordsForCharts skipped: authToken missing");
-        return;
-      }
-
-      const res = await axios.get(`${API_BASE}/records/all`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 30000,
-      });
-
-      if (!isMountedRef.current) return;
-
-      const dataArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.records)
-        ? res.data.records
-        : [];
-
-      const cleanedData = dataArray.map(cleanRecord);
-      setAllRecords(cleanedData);
-    } catch (error) {
-      if (!isMountedRef.current) return;
-
-      console.error("Failed to fetch all records for charts", error);
-      setError("Failed to load chart data. Please refresh.");
-    } finally {
-      if (isMountedRef.current) {
-        setLoadingCharts(false);
-      }
-    }
-  }, [authToken, cleanRecord]);
 
   useEffect(() => {
     if (!authToken) {
@@ -148,8 +139,7 @@ const AdminProvider = ({ children }) => {
       return;
     }
     fetchRecords(1);
-    fetchAllRecordsForCharts();
-  }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
+  }, [authToken, fetchRecords]);
 
   const goToPage = useCallback(
     (pageNumber) => {
@@ -183,7 +173,6 @@ const AdminProvider = ({ children }) => {
         const combined = [...prev, ...flatRecords];
         return combined;
       });
-      setAllRecords((prev) => [...prev, ...flatRecords]);
     } catch (error) {
       console.error("Failed to import records:", error);
       setError("Failed to import records. Please check the data format.");
@@ -223,11 +212,6 @@ const AdminProvider = ({ children }) => {
           const updated = [...prev, formattedRecord];
           return updated;
         });
-
-        setAllRecords((prev) => {
-          const updated = [...prev, formattedRecord];
-          return updated;
-        });
       } catch (error) {
         console.error("Failed to add record", error);
         setError("Failed to add record. Please try again.");
@@ -252,10 +236,10 @@ const AdminProvider = ({ children }) => {
         setPage,
         totalPages,
         totalRecords,
+        allRecords,
+        loadingAll,
         loading,
         goToPage,
-        allRecords,
-        loadingCharts,
         error,
         clearError,
       }}
