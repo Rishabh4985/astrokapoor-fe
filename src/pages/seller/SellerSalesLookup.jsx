@@ -53,7 +53,7 @@ const expectedHeaders = [
 ];
 
 const SellerSalesLookup = ({ onFilter }) => {
-  const { allRecords, importSellerRecords } = useContext(SellerContext);
+  const { sellerRecords, importSellerRecords } = useContext(SellerContext);
   const [query, setQuery] = useState("");
   const [filterType, setFilterType] = useState("all");
   const [filterValue, setFilterValue] = useState("");
@@ -71,13 +71,13 @@ const SellerSalesLookup = ({ onFilter }) => {
   const sellerEmail = getCurrentSellerEmail();
 
   const flattenedRecords = useMemo(() => {
-    if (!allRecords || !Array.isArray(allRecords)) return [];
+    if (!sellerRecords || !Array.isArray(sellerRecords)) return [];
 
-    return allRecords.filter((record) => {
+    return sellerRecords.filter((record) => {
       const handler = record.handlerId?.toLowerCase().trim();
       return !handler || handler === sellerEmail;
     });
-  }, [allRecords, sellerEmail]);
+  }, [sellerRecords, sellerEmail]);
 
   const dynamicHeaders = useMemo(() => {
     return flattenedRecords.reduce((set, record) => {

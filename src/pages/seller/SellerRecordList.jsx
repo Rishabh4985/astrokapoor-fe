@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 const SellerRecordList = ({ onFilter }) => {
-  const { allRecords, updateSellerRecord } = useContext(SellerContext);
+  const { sellerRecords, updateSellerRecord } = useContext(SellerContext);
   const [query, setQuery] = useState("");
   const [editingIndex, setEditingIndex] = useState(null);
   const [editedRecord, setEditedRecord] = useState({});
@@ -33,8 +33,8 @@ const SellerRecordList = ({ onFilter }) => {
   const sellerEmail = currentSeller?.email?.toLowerCase().trim();
 
   const visibleRecords = useMemo(() => {
-  return Array.isArray(allRecords) ? allRecords : [];
-}, [allRecords]);
+  return Array.isArray(sellerRecords) ? sellerRecords : [];
+}, [sellerRecords]);
 
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => {
