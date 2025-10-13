@@ -91,7 +91,7 @@ sessionStorage.setItem("userList", JSON.stringify(cleanedData));
 
       const res = await axios.get(`${API_BASE}/records/charts`, {
         headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 15000,
+        timeout: 30000,
       });
 
       const dataArray = Array.isArray(res.data)
@@ -286,6 +286,7 @@ sessionStorage.setItem("userList", JSON.stringify(cleanedData));
         updateSellerProfile,
         fetchSellerRecords,
         fetchAllRecordsForCharts,
+        fetchRecords,
       }}
     >
       {children}

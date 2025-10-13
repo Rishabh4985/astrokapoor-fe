@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 const SellerRecordList = ({ onFilter }) => {
-  const { allRecords, importSellerRecords } = useContext(SellerContext);
+  const { allRecords, updateSellerRecord } = useContext(SellerContext);
   const [query, setQuery] = useState("");
   const [editingIndex, setEditingIndex] = useState(null);
   const [editedRecord, setEditedRecord] = useState({});
@@ -33,13 +33,8 @@ const SellerRecordList = ({ onFilter }) => {
   const sellerEmail = currentSeller?.email?.toLowerCase().trim();
 
   const visibleRecords = useMemo(() => {
-    if (!allRecords || !Array.isArray(allRecords)) return [];
-
-    return allRecords.filter((record) => {
-      const handler = (record?.handlerId || "").toLowerCase().trim();
-      return !handler || handler === sellerEmail;
-    });
-  }, [allRecords, sellerEmail]);
+  return Array.isArray(allRecords) ? allRecords : [];
+}, [allRecords]);
 
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => {
@@ -210,35 +205,30 @@ const SellerRecordList = ({ onFilter }) => {
     setEditedRecord((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleSave = (index) => {
-    const recordToSave = filteredRecords[index];
-    const handler = (recordToSave.handlerId || "").toLowerCase().trim();
+  const handleSave = async (index) => {
+  const recordToSave = filteredRecords[index];
+  const handler = (recordToSave.handlerId || "").toLowerCase().trim();
 
-    if (!handler) {
-      toast.error("You cannot edit public/unclaimed records.");
-      return;
-    }
-    if (handler !== sellerEmail) {
-      toast.error("You can only edit your own records.");
-      return;
-    }
+  if (!handler) {
+    toast.error("You cannot edit public/unclaimed records.");
+    return;
+  }
+  if (handler !== sellerEmail) {
+    toast.error("You can only edit your own records.");
+    return;
+  }
 
-    // Update the record in allRecords
-    const updatedRecords = [...allRecords];
-    const recordId = filteredRecords[index].transactionId;
-    const originalIndex = allRecords.findIndex(
-      (rec) => rec.transactionId === recordId
-    );
+  try {
+    await updateSellerRecord(recordToSave._id, editedRecord);
+    toast.success("Record updated successfully!");
+  } catch (error) {
+    console.error(error);
+    toast.error("Failed to update record.");
+  }
 
-    if (originalIndex !== -1) {
-      updatedRecords[originalIndex] = { ...editedRecord };
-      importSellerRecords(updatedRecords);
-      toast.success("Record updated!");
-    }
-
-    setEditingIndex(null);
-    setEditedRecord({});
-  };
+  setEditingIndex(null);
+  setEditedRecord({});
+};
 
   const getUniqueValues = (key) => {
     if (!visibleRecords?.length) return [];
