@@ -24,7 +24,7 @@ const SellerProvider = ({ children }) => {
   const [sellerRecords, setSellerRecords] = useState([]);
   const [allRecords, setAllRecords] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(100);
+  const [limit] = useState(500); // load 500 records per page
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -45,6 +45,7 @@ const SellerProvider = ({ children }) => {
     };
   }, []);
 
+  // Fetch paginated seller records
   const fetchRecords = useCallback(
     async (pageNumber = 1) => {
       if (!authToken) return;
@@ -68,24 +69,37 @@ const SellerProvider = ({ children }) => {
 
         const cleanedData = dataArray.map(cleanRecord);
 
-        setSellerRecords(cleanedData);
+        // Append records for lazy loading
+        setSellerRecords((prev) =>
+          pageNumber === 1 ? cleanedData : [...prev, ...cleanedData]
+        );
 
         setTotalRecords(res.data.totalRecords || cleanedData.length);
-        
-        setTotalPages(res.data.totalPages || Math.ceil(totalRecords / limit));
-
+        setTotalPages(
+          res.data.totalPages || Math.ceil((res.data.totalRecords || 0) / limit)
+        );
         setPage(pageNumber);
 
-        sessionStorage.setItem("userList", JSON.stringify(cleanedData));
+        if (pageNumber === 1) {
+          try {
+            sessionStorage.setItem(
+              "userList",
+              JSON.stringify(cleanedData.slice(0, 500))
+            );
+          } catch (e) {
+            console.warn("Skipping sessionStorage cache:", e.message);
+          }
+        }
       } catch (error) {
         console.log("Failed to fetch data", error);
       } finally {
         setLoading(false);
       }
     },
-    [authToken, limit, cleanRecord, totalRecords]
+    [authToken, limit, cleanRecord]
   );
 
+  // Fetch all data for charts only
   const fetchAllRecordsForCharts = useCallback(async () => {
     try {
       setLoadingCharts(true);
@@ -111,15 +125,48 @@ const SellerProvider = ({ children }) => {
     }
   }, [authToken, cleanRecord]);
 
+  // Initial + background fetch
   useEffect(() => {
     if (!authToken) {
       console.warn("SellerProvider: authToken not ready yet, skipping fetch");
       return;
     }
+
     fetchRecords(1);
     fetchAllRecordsForCharts();
-  }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
 
+    // Background prefetch next pages (non-blocking)
+    (async () => {
+      try {
+        let pageNum = 2;
+        while (pageNum <= totalPages) {
+          const res = await axios.get(
+            `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
+            {
+              headers: { Authorization: `Bearer ${authToken}` },
+            }
+          );
+          const dataArray = Array.isArray(res.data.records)
+            ? res.data.records
+            : [];
+          const cleaned = dataArray.map(cleanRecord);
+          setSellerRecords((prev) => [...prev, ...cleaned]);
+          pageNum++;
+        }
+      } catch (err) {
+        console.warn("Background prefetch stopped:", err.message);
+      }
+    })();
+  }, [
+    authToken,
+    fetchRecords,
+    fetchAllRecordsForCharts,
+    totalPages,
+    cleanRecord,
+    limit,
+  ]);
+
+  // Pagination control
   const goToPage = useCallback(
     (pageNumber) => {
       if (pageNumber < 1 || pageNumber > totalPages) return;
@@ -128,13 +175,16 @@ const SellerProvider = ({ children }) => {
     [fetchRecords, totalPages]
   );
 
+  // Local import
   const importSellerRecords = useCallback(
     (importedRecords) => {
       const sellerEmail = currentSeller?.email.toLowerCase().trim();
       if (!sellerEmail) return;
 
       const normalize = (val) =>
-        typeof val === "string" ? val.toLowerCase().trim() : val?.toString().trim();
+        typeof val === "string"
+          ? val.toLowerCase().trim()
+          : val?.toString().trim();
 
       const flatRecords = importedRecords.map((record) => ({
         ...record,
@@ -158,6 +208,7 @@ const SellerProvider = ({ children }) => {
     [currentSeller]
   );
 
+  // Add record
   const addSellerRecord = useCallback(
     async (newRecord) => {
       try {
@@ -175,29 +226,29 @@ const SellerProvider = ({ children }) => {
           handlerId: sellerEmail,
         };
 
-        const res = await axios.post(`${API_BASE}/records`, recordToSend, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+        const res = await axios.post(
+          `${API_BASE}/records/handler`,
+          recordToSend,
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }
+        );
 
         const savedRecord = res.data.record || res.data;
         const formattedRecord = cleanRecord(savedRecord);
 
         setSellerRecords((prev) => {
           const updated = [...prev, formattedRecord];
-          return updated.sort((a, b) => {
-            const dateA = new Date(a.dateOfPayment);
-            const dateB = new Date(b.dateOfPayment);
-            return dateB - dateA;
-          });
+          return updated.sort(
+            (a, b) => new Date(b.dateOfPayment) - new Date(a.dateOfPayment)
+          );
         });
 
         setAllRecords((prev) => {
           const updated = [...prev, formattedRecord];
-          return updated.sort((a, b) => {
-            const dateA = new Date(a.dateOfPayment);
-            const dateB = new Date(b.dateOfPayment);
-            return dateB - dateA;
-          });
+          return updated.sort(
+            (a, b) => new Date(b.dateOfPayment) - new Date(a.dateOfPayment)
+          );
         });
 
         console.log("📥 Seller record added successfully");
@@ -209,19 +260,18 @@ const SellerProvider = ({ children }) => {
     [authToken, currentSeller, cleanRecord]
   );
 
+  // Update record
   const updateSellerRecord = useCallback(
     async (record) => {
       try {
         if (!authToken) throw new Error("No Auth Token");
 
-        await axios.patch(`${API_BASE}/records/${record._id}`, record, {
+        await axios.patch(`${API_BASE}/records/handler/${record._id}`, record, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
         fetchRecords(page);
-
         fetchAllRecordsForCharts();
-
         toast.success("Record updated successfully");
       } catch (err) {
         console.error(err);
@@ -234,14 +284,11 @@ const SellerProvider = ({ children }) => {
 
   const updateSellerProfile = useCallback((updatedSeller) => {
     localStorage.setItem("currentSeller", JSON.stringify(updatedSeller));
-
     const allSalespersons =
       JSON.parse(localStorage.getItem("salespersons")) || [];
-
     const updatedSalespersons = allSalespersons.map((sp) =>
       sp.email === updatedSeller.email ? updatedSeller : sp
     );
-
     localStorage.setItem("salespersons", JSON.stringify(updatedSalespersons));
   }, []);
 
@@ -249,7 +296,7 @@ const SellerProvider = ({ children }) => {
     try {
       if (!authToken) throw new Error("No Auth Token");
 
-      const res = await axios.get(`${API_BASE}/records`, {
+      const res = await axios.get(`${API_BASE}/records/handler`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
 
