@@ -137,10 +137,12 @@ const SellerProvider = ({ children }) => {
     }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
 
     // Background prefetch (after totalPages known)
-    useEffect(() => {
+   useEffect(() => {
   if (!authToken || totalPages <= 1) return;
-    (async () => {
-     try {
+
+  const fetchSequentially = async () => {
+    try {
+      let allFetched = [];
       for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
         const res = await axios.get(
           `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
@@ -154,19 +156,19 @@ const SellerProvider = ({ children }) => {
           : [];
         const cleaned = dataArray.map(cleanRecord);
 
-        // append progressively
-        setSellerRecords((prev) => [...prev, ...cleaned]);
+        allFetched = [...allFetched, ...cleaned];
       }
+
+      // After all pages fetched, set once
+      setSellerRecords((prev) => [...prev, ...allFetched]);
     } catch (err) {
-        console.warn("Background prefetch stopped:", err.message);
-      }
-    })();
-  }, [
-    authToken,
-    totalPages,
-    cleanRecord,
-    limit,
-  ]);
+      console.warn("Background prefetch stopped:", err.message);
+    }
+  };
+
+  fetchSequentially();
+}, [authToken, totalPages, cleanRecord, limit]);
+
 
   // Pagination control
   const goToPage = useCallback(

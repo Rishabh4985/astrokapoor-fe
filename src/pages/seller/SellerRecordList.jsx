@@ -33,8 +33,8 @@ const SellerRecordList = ({ onFilter }) => {
   const sellerEmail = currentSeller?.email?.toLowerCase().trim();
 
   const visibleRecords = useMemo(() => {
-  return Array.isArray(sellerRecords) ? sellerRecords : [];
-}, [sellerRecords]);
+    return Array.isArray(sellerRecords) ? sellerRecords : [];
+  }, [sellerRecords]);
 
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => {
@@ -206,34 +206,40 @@ const SellerRecordList = ({ onFilter }) => {
   };
 
   const handleSave = async (index) => {
-  const recordToSave = filteredRecords[index];
-  const handler = (recordToSave.handlerId || "").toLowerCase().trim();
+    const recordToSave = filteredRecords[index];
+    const handler = (recordToSave.handlerId || "").toLowerCase().trim();
 
-  if (!handler) {
-    toast.error("You cannot edit public/unclaimed records.");
-    return;
-  }
-  if (handler !== sellerEmail) {
-    toast.error("You can only edit your own records.");
-    return;
-  }
+    if (!handler) {
+      toast.error("You cannot edit public/unclaimed records.");
+      return;
+    }
+    if (handler !== sellerEmail) {
+      toast.error("You can only edit your own records.");
+      return;
+    }
 
-  try {
-    await updateSellerRecord(recordToSave._id, editedRecord);
-    toast.success("Record updated successfully!");
-  } catch (error) {
-    console.error(error);
-    toast.error("Failed to update record.");
-  }
+    try {
+      await updateSellerRecord(recordToSave._id, editedRecord);
+      toast.success("Record updated successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update record.");
+    }
 
-  setEditingIndex(null);
-  setEditedRecord({});
-};
+    setEditingIndex(null);
+    setEditedRecord({});
+  };
 
   const getUniqueValues = (key) => {
     if (!visibleRecords?.length) return [];
     return [...new Set(visibleRecords.map((r) => r[key]).filter(Boolean))];
   };
+
+  const startRecord = (currentPage - 1) * itemsPerPage + 1;
+  const endRecord = Math.min(
+    currentPage * itemsPerPage,
+    filteredRecords.length
+  );
 
   return (
     <div className="bg-white rounded-2xl shadow-lg mb-8 p-6 border border-orange-100 space-y-4">
@@ -467,7 +473,7 @@ const SellerRecordList = ({ onFilter }) => {
           <span>
             Page {currentPage} of {totalPages} &nbsp;
             <span className="text-xs text-orange-700">
-              (showing {paginatedRecords.length} of {filteredRecords.length}{" "}
+              (showing {startRecord}–{endRecord} of {filteredRecords.length}{" "}
               filtered)
             </span>
           </span>

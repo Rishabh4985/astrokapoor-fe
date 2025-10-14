@@ -490,12 +490,11 @@ const AdminSalesLookup = ({ onFilter }) => {
           <span className="flex items-center px-2 font-semibold text-orange-700">
             Page {page} of {totalPages}
             <span className="text-sm ml-2 text-orange-600">
-              (showing{" "}
-              {Math.min(
-                itemsPerPage,
-                filteredRecords.length - (page - 1) * itemsPerPage
-              )}{" "}
-              of {filteredRecords.length} filtered)
+              {(() => {
+        const startIndex = (page - 1) * itemsPerPage + 1;
+        const endIndex = Math.min(page * itemsPerPage, filteredRecords.length);
+        return `(showing ${startIndex} to ${endIndex} of ${filteredRecords.length} filtered)`;
+      })()}
             </span>
           </span>
           <button

@@ -437,12 +437,11 @@ const AdminSalesRecordList = ({ onFilter }) => {
           <span className="flex items-center px-2 font-semibold text-orange-700">
             Page {currentPage} of {totalPagesCalc}
             <span className="text-sm ml-2 text-orange-600">
-              (showing{" "}
-              {Math.min(
-                itemsPerPage,
-                filteredRecords.length - (currentPage - 1) * itemsPerPage
-              )}{" "}
-              of {filteredRecords.length} filtered)
+             {(() => {
+        const startIndex = (currentPage - 1) * itemsPerPage + 1;
+        const endIndex = Math.min(currentPage * itemsPerPage, filteredRecords.length);
+        return `(showing ${startIndex} to ${endIndex} of ${filteredRecords.length} filtered)`;
+      })()}
             </span>
           </span>
           <button

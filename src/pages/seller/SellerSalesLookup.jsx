@@ -8,7 +8,14 @@ import React, {
 import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
-import { Search, Calendar, Filter, Table2, PackageCheck, X } from "lucide-react";
+import {
+  Search,
+  Calendar,
+  Filter,
+  Table2,
+  PackageCheck,
+  X,
+} from "lucide-react";
 
 const expectedHeaders = [
   "dateOfPayment",
@@ -282,7 +289,13 @@ const SellerSalesLookup = ({ onFilter }) => {
     setCategory("all");
   };
 
-  const hasActiveFilters = query || filterType !== "all" || categoryKey || category !== "all";
+  const hasActiveFilters =
+    query || filterType !== "all" || categoryKey || category !== "all";
+  const startRecord = (currentPage - 1) * itemsPerPage + 1;
+  const endRecord = Math.min(
+    currentPage * itemsPerPage,
+    filteredRecords.length
+  );
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6">
@@ -292,7 +305,7 @@ const SellerSalesLookup = ({ onFilter }) => {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
               <h2 className="text-xl sm:text-2xl font-bold text-orange-800 flex items-center gap-2">
-                <Table2 className="w-5 h-5 sm:w-6 sm:h-6" /> 
+                <Table2 className="w-5 h-5 sm:w-6 sm:h-6" />
                 Seller Sales Lookup
               </h2>
               <p className="text-sm text-orange-600">
@@ -307,7 +320,6 @@ const SellerSalesLookup = ({ onFilter }) => {
 
         <div className="p-4 sm:p-6 bg-orange-50/50 border-b border-orange-200">
           <div className="space-y-4">
-            
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-600 w-4 h-4" />
               <input
@@ -320,7 +332,6 @@ const SellerSalesLookup = ({ onFilter }) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              
               {/* Date Filter */}
               <div className="space-y-2">
                 <label className="flex items-center gap-2 text-sm font-medium text-orange-700">
@@ -341,7 +352,7 @@ const SellerSalesLookup = ({ onFilter }) => {
                   <option value="month">By Month</option>
                   <option value="year">By Year</option>
                 </select>
-                
+
                 {filterType === "date" && (
                   <input
                     type="date"
@@ -510,7 +521,9 @@ const SellerSalesLookup = ({ onFilter }) => {
                       className="text-center py-8 text-gray-500"
                     >
                       <div className="space-y-2">
-                        <div className="text-lg font-medium">No matching records found</div>
+                        <div className="text-lg font-medium">
+                          No matching records found
+                        </div>
                         <div className="text-sm">
                           Try adjusting your search criteria or clear filters
                         </div>
@@ -526,10 +539,16 @@ const SellerSalesLookup = ({ onFilter }) => {
           {totalPages > 1 && (
             <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 p-4 bg-orange-50 rounded-lg">
               <div className="text-sm text-orange-700 text-center sm:text-left">
-                Showing {paginatedRecords.length} of {filteredRecords.length} filtered records
-                <span className="hidden sm:inline"> (Page {currentPage} of {totalPages})</span>
+                <span className="text-xs text-orange-700">
+                  (showing {startRecord}–{endRecord} of {filteredRecords.length}{" "}
+                  filtered records)
+                </span>
+                <span className="hidden sm:inline">
+                  {" "}
+                  (Page {currentPage} of {totalPages})
+                </span>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
@@ -538,13 +557,15 @@ const SellerSalesLookup = ({ onFilter }) => {
                 >
                   Previous
                 </button>
-                
+
                 <div className="px-3 py-2 bg-white border border-orange-300 rounded-lg text-sm min-w-[80px] text-center">
                   {currentPage} / {totalPages}
                 </div>
-                
+
                 <button
-                  onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
+                  onClick={() =>
+                    setCurrentPage((p) => Math.min(p + 1, totalPages))
+                  }
                   disabled={currentPage === totalPages || totalPages === 0}
                   className="px-3 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors text-sm"
                 >
