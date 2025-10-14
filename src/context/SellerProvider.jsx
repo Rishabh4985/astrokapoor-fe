@@ -52,36 +52,38 @@ const SellerProvider = ({ children }) => {
         setLoading(true);
 
         const res = await axios.get(
-          `${API_BASE}/records/paginated?page=${pageNumber}&limit=${limit}`,
+          `${API_BASE}/records/handler?page=${pageNumber}&limit=${limit}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           }
         );
+
+        console.log("Seller records API response:", res.data);
+
+        const dataArray = Array.isArray(res.data.records)
+          ? res.data.records
+          : Array.isArray(res.data)
+          ? res.data
+          : [];
+
+        const cleanedData = dataArray.map(cleanRecord);
+
+        setSellerRecords(cleanedData);
+
+        setTotalRecords(res.data.totalRecords || cleanedData.length);
         
-console.log("Seller records API response:", res.data);
+        setTotalPages(res.data.totalPages || Math.ceil(totalRecords / limit));
 
-const dataArray = Array.isArray(res.data.records)
-  ? res.data.records
-  : Array.isArray(res.data)
-  ? res.data
-  : [];
+        setPage(pageNumber);
 
-const cleanedData = dataArray.map(cleanRecord);
-
-setSellerRecords(cleanedData);
-setTotalPages(res.data.totalPages || 1);
-setTotalRecords(res.data.totalRecords || cleanedData.length);
-setPage(pageNumber);
-
-sessionStorage.setItem("userList", JSON.stringify(cleanedData));
-
+        sessionStorage.setItem("userList", JSON.stringify(cleanedData));
       } catch (error) {
         console.log("Failed to fetch data", error);
       } finally {
         setLoading(false);
       }
     },
-    [authToken, limit, cleanRecord]
+    [authToken, limit, cleanRecord, totalRecords]
   );
 
   const fetchAllRecordsForCharts = useCallback(async () => {
@@ -132,9 +134,7 @@ sessionStorage.setItem("userList", JSON.stringify(cleanedData));
       if (!sellerEmail) return;
 
       const normalize = (val) =>
-        typeof val === "string"
-          ? val.toLowerCase().trim()
-          : val?.toString().trim();
+        typeof val === "string" ? val.toLowerCase().trim() : val?.toString().trim();
 
       const flatRecords = importedRecords.map((record) => ({
         ...record,
