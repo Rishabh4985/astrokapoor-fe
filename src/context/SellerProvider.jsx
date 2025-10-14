@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import { SellerContext } from "./SellerContext";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -24,11 +24,39 @@ const SellerProvider = ({ children }) => {
   const [sellerRecords, setSellerRecords] = useState([]);
   const [allRecords, setAllRecords] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(500); // load 500 records per page
+  const [limit] = useState(500);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
   const [loadingCharts, setLoadingCharts] = useState(false);
+
+  const [chartData, setChartData] = useState({
+    "monthly-sales": { data: [], loading: false, error: null, lastFetched: null },
+    "sales-vs-refund": { data: [], loading: false, error: null, lastFetched: null },
+    "status-count": { data: [], loading: false, error: null, lastFetched: null },
+  });
+
+  const chartDataRef = useRef(chartData);
+
+  useEffect(() => {
+    chartDataRef.current = chartData;
+  }, [chartData]);
+
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+  const isDataStale = useCallback((lastFetched) => {
+    if (!lastFetched) return true;
+    return Date.now() - lastFetched > CACHE_DURATION;
+  }, [CACHE_DURATION]);
 
   const cleanRecord = useCallback((record) => {
     const omitKeys = (obj, keys) => {
@@ -45,7 +73,6 @@ const SellerProvider = ({ children }) => {
     };
   }, []);
 
-  // Fetch paginated seller records
   const fetchRecords = useCallback(
     async (pageNumber = 1) => {
       if (!authToken) return;
@@ -59,8 +86,6 @@ const SellerProvider = ({ children }) => {
           }
         );
 
-        console.log("Seller records API response:", res.data);
-
         const dataArray = Array.isArray(res.data.records)
           ? res.data.records
           : Array.isArray(res.data)
@@ -69,7 +94,6 @@ const SellerProvider = ({ children }) => {
 
         const cleanedData = dataArray.map(cleanRecord);
 
-        // Append records for lazy loading
         setSellerRecords((prev) =>
           pageNumber === 1 ? cleanedData : [...prev, ...cleanedData]
         );
@@ -99,7 +123,6 @@ const SellerProvider = ({ children }) => {
     [authToken, limit, cleanRecord]
   );
 
-  // Fetch all data for charts only
   const fetchAllRecordsForCharts = useCallback(async () => {
     try {
       setLoadingCharts(true);
@@ -125,7 +148,100 @@ const SellerProvider = ({ children }) => {
     }
   }, [authToken, cleanRecord]);
 
-  // Initial + background fetch
+  const fetchChartData = useCallback(
+    async (chartType) => {
+      if (!authToken) return [];
+
+      const currentChartData = chartDataRef.current[chartType];
+      if (
+        currentChartData &&
+        currentChartData.data.length > 0 &&
+        !isDataStale(currentChartData.lastFetched)
+      ) {
+        return currentChartData.data; // Return cached data
+      }
+
+      try {
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: { ...prev[chartType], loading: true, error: null },
+        }));
+
+        const response = await axios.get(`${API_BASE}/records/charts/${chartType}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+          timeout: 20000,
+        });
+
+        const result = Array.isArray(response.data)
+          ? response.data
+          : Array.isArray(response.data.records)
+          ? response.data.records
+          : [];
+
+        if (!isMountedRef.current) return [];
+
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: {
+            data: result,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+
+        return result;
+      } catch (error) {
+        if (!isMountedRef.current) return [];
+
+        console.error(`Failed to fetch ${chartType} data:`, error);
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: {
+            ...prev[chartType],
+            loading: false,
+            error: error.message,
+          },
+        }));
+
+        return [];
+      }
+    },
+    [authToken, isDataStale]
+  );
+
+  const fetchMonthlySalesData = useCallback(
+    () => fetchChartData("monthly-sales"),
+    [fetchChartData]
+  );
+  const fetchSalesVsRefundData = useCallback(
+    () => fetchChartData("sales-vs-refund"),
+    [fetchChartData]
+  );
+  const fetchStatusData = useCallback(
+    () => fetchChartData("status-count"),
+    [fetchChartData]
+  );
+
+  const refreshChartData = useCallback(
+    (chartType) => {
+      setChartData((prev) => ({
+        ...prev,
+        [chartType]: { ...prev[chartType], lastFetched: null },
+      }));
+      return fetchChartData(chartType);
+    },
+    [fetchChartData]
+  );
+
+  const clearChartCache = useCallback(() => {
+    setChartData({
+      "monthly-sales": { data: [], loading: false, error: null, lastFetched: null },
+      "sales-vs-refund": { data: [], loading: false, error: null, lastFetched: null },
+      "status-count": { data: [], loading: false, error: null, lastFetched: null },
+    });
+  }, []);
+
   useEffect(() => {
     if (!authToken) {
       console.warn("SellerProvider: authToken not ready yet, skipping fetch");
@@ -134,43 +250,37 @@ const SellerProvider = ({ children }) => {
 
     fetchRecords(1);
     fetchAllRecordsForCharts();
-    }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
+  }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
 
-    // Background prefetch (after totalPages known)
-   useEffect(() => {
-  if (!authToken || totalPages <= 1) return;
+  useEffect(() => {
+    if (!authToken || totalPages <= 1) return;
 
-  const fetchSequentially = async () => {
-    try {
-      let allFetched = [];
-      for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
-        const res = await axios.get(
-          `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
+    const fetchSequentially = async () => {
+      try {
+        let allFetched = [];
+        for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
+          const res = await axios.get(
+            `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
+            {
+              headers: { Authorization: `Bearer ${authToken}` },
+            }
+          );
 
-        const dataArray = Array.isArray(res.data.records)
-          ? res.data.records
-          : [];
-        const cleaned = dataArray.map(cleanRecord);
+          const dataArray = Array.isArray(res.data.records) ? res.data.records : [];
+          const cleaned = dataArray.map(cleanRecord);
 
-        allFetched = [...allFetched, ...cleaned];
+          allFetched = [...allFetched, ...cleaned];
+        }
+
+        setSellerRecords((prev) => [...prev, ...allFetched]);
+      } catch (err) {
+        console.warn("Background prefetch stopped:", err.message);
       }
+    };
 
-      // After all pages fetched, set once
-      setSellerRecords((prev) => [...prev, ...allFetched]);
-    } catch (err) {
-      console.warn("Background prefetch stopped:", err.message);
-    }
-  };
+    fetchSequentially();
+  }, [authToken, totalPages, cleanRecord, limit]);
 
-  fetchSequentially();
-}, [authToken, totalPages, cleanRecord, limit]);
-
-
-  // Pagination control
   const goToPage = useCallback(
     (pageNumber) => {
       if (pageNumber < 1 || pageNumber > totalPages) return;
@@ -179,16 +289,13 @@ const SellerProvider = ({ children }) => {
     [fetchRecords, totalPages]
   );
 
-  // Local import
   const importSellerRecords = useCallback(
     (importedRecords) => {
       const sellerEmail = currentSeller?.email.toLowerCase().trim();
       if (!sellerEmail) return;
 
       const normalize = (val) =>
-        typeof val === "string"
-          ? val.toLowerCase().trim()
-          : val?.toString().trim();
+        typeof val === "string" ? val.toLowerCase().trim() : val?.toString().trim();
 
       const flatRecords = importedRecords.map((record) => ({
         ...record,
@@ -212,7 +319,6 @@ const SellerProvider = ({ children }) => {
     [currentSeller]
   );
 
-  // Add record
   const addSellerRecord = useCallback(
     async (newRecord) => {
       try {
@@ -230,13 +336,9 @@ const SellerProvider = ({ children }) => {
           handlerId: sellerEmail,
         };
 
-        const res = await axios.post(
-          `${API_BASE}/records/handler`,
-          recordToSend,
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          }
-        );
+        const res = await axios.post(`${API_BASE}/records/handler`, recordToSend, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
 
         const savedRecord = res.data.record || res.data;
         const formattedRecord = cleanRecord(savedRecord);
@@ -264,7 +366,6 @@ const SellerProvider = ({ children }) => {
     [authToken, currentSeller, cleanRecord]
   );
 
-  // Update record
   const updateSellerRecord = useCallback(
     async (record) => {
       try {
@@ -288,8 +389,7 @@ const SellerProvider = ({ children }) => {
 
   const updateSellerProfile = useCallback((updatedSeller) => {
     localStorage.setItem("currentSeller", JSON.stringify(updatedSeller));
-    const allSalespersons =
-      JSON.parse(localStorage.getItem("salespersons")) || [];
+    const allSalespersons = JSON.parse(localStorage.getItem("salespersons")) || [];
     const updatedSalespersons = allSalespersons.map((sp) =>
       sp.email === updatedSeller.email ? updatedSeller : sp
     );
@@ -338,6 +438,15 @@ const SellerProvider = ({ children }) => {
         fetchSellerRecords,
         fetchAllRecordsForCharts,
         fetchRecords,
+
+        // Chart data and fetchers
+        chartData,
+        fetchMonthlySalesData,
+        fetchSalesVsRefundData,
+        fetchStatusData,
+        refreshChartData,
+        clearChartCache,
+        isDataStale,
       }}
     >
       {children}

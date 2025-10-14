@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import {
   BarChart,
   Bar,
@@ -15,40 +15,54 @@ const API_URL = import.meta.env.DEV
   ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
+// Cache duration 5 minutes
+const CACHE_DURATION = 5 * 60 * 1000;
+
 const MonthlySalesChart = () => {
   const { authToken, userRole } = useContext(AuthContext);
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const lastFetchedRef = useRef(null);
 
   useEffect(() => {
     if (!authToken || !userRole) {
-      setLoading(false);
       setError("Not authenticated");
+      setData([]);
+      setLoading(false);
       return;
     }
+
+    // Check cache freshness
+    const now = Date.now();
+    if (lastFetchedRef.current && (now - lastFetchedRef.current < CACHE_DURATION)) {
+      // Use cached data; do not fetch
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+
     const basePath = `${API_URL}/${userRole}/charts`;
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`${basePath}/monthly-sales`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-        if (!response.ok) throw new Error("Failed to fetch");
-        const result = await response.json();
-        setData(result);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchData();
+    fetch(`${basePath}/monthly-sales`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    }).then((res) => {
+      if (!res.ok) throw new Error("Failed to fetch");
+      return res.json();
+    }).then((result) => {
+      setData(result);
+      lastFetchedRef.current = Date.now();
+      setLoading(false);
+    }).catch((err) => {
+      setError(err.message);
+      setLoading(false);
+    });
   }, [authToken, userRole]);
 
-  // Sort data by year then by month (name = "Month Year")
+  // Memoize sorted data by full array to avoid anomalies
   const sortedData = useMemo(() => {
+    if (!data?.length) return [];
     const monthMap = {
       Jan: 1,
       Feb: 2,
@@ -76,8 +90,6 @@ const MonthlySalesChart = () => {
   if (loading) return <div>Loading Monthly Sales Chart...</div>;
   if (error) return <div>Error: {error}</div>;
 
-  const isEmpty = !data || data.length === 0;
-
   return (
     <div className="bg-orange-50 border border-orange-200 rounded-2xl shadow-md p-4 sm:p-6 mb-6 w-full">
       <div className="flex items-center gap-2 mb-4">
@@ -87,7 +99,7 @@ const MonthlySalesChart = () => {
         </h3>
       </div>
 
-      {isEmpty ? (
+      {sortedData.length === 0 ? (
         <div className="h-[350px] flex items-center justify-center text-gray-400 italic">
           No sales data available
         </div>

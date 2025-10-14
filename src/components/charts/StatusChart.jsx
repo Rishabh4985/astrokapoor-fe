@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import {
   BarChart,
@@ -15,43 +15,55 @@ const API_URL = import.meta.env.DEV
   ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes cache
+
 const StatusChart = () => {
   const { authToken, userRole } = useContext(AuthContext);
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const lastFetchedRef = useRef(null);
 
   useEffect(() => {
     if (!authToken || !userRole) {
       setLoading(false);
       setError("Not authenticated");
+      setData([]);
       return;
     }
 
+    const now = Date.now();
+    if (lastFetchedRef.current && now - lastFetchedRef.current < CACHE_DURATION) {
+      // Use cached data
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
     const basePath = `${API_URL}/${userRole}/charts`;
 
-    const fetchData = async () => {
-      try {
-        const response = await fetch(`${basePath}/status-count`, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-        if (!response.ok) throw new Error("Failed to fetch");
-        const result = await response.json();
+    fetch(`${basePath}/status-count`, {
+      headers: { Authorization: `Bearer ${authToken}` },
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch");
+        return res.json();
+      })
+      .then((result) => {
         setData(result);
-      } catch (err) {
-        setError(err.message);
-      } finally {
+        lastFetchedRef.current = Date.now();
         setLoading(false);
-      }
-    };
-
-    fetchData();
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, [authToken, userRole]);
+
+  const isEmpty = !data || data.length === 0;
 
   if (loading) return <div>Loading Status Chart...</div>;
   if (error) return <div>Error: {error}</div>;
-
-  const isEmpty = !data || data.length === 0;
 
   return (
     <div className="bg-orange-50 border border-orange-200 rounded-2xl shadow-md p-4 sm:p-6 mb-6 w-full overflow-visible">
@@ -68,10 +80,7 @@ const StatusChart = () => {
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={350}>
-          <BarChart
-            data={data}
-            margin={{ top: 10, right: 0, bottom: 10, left: -17 }}
-          >
+          <BarChart data={data} margin={{ top: 10, right: 0, bottom: 10, left: -17 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
             <XAxis dataKey="name" stroke="#92400e" />
             <YAxis stroke="#92400e" domain={[0, "dataMax"]} />
