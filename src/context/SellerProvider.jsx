@@ -134,33 +134,35 @@ const SellerProvider = ({ children }) => {
 
     fetchRecords(1);
     fetchAllRecordsForCharts();
+    }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
 
-    // Background prefetch next pages (non-blocking)
+    // Background prefetch (after totalPages known)
+    useEffect(() => {
+  if (!authToken || totalPages <= 1) return;
     (async () => {
-      try {
-        let pageNum = 2;
-        while (pageNum <= totalPages) {
-          const res = await axios.get(
-            `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
-            {
-              headers: { Authorization: `Bearer ${authToken}` },
-            }
-          );
-          const dataArray = Array.isArray(res.data.records)
-            ? res.data.records
-            : [];
-          const cleaned = dataArray.map(cleanRecord);
-          setSellerRecords((prev) => [...prev, ...cleaned]);
-          pageNum++;
-        }
-      } catch (err) {
+     try {
+      for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
+        const res = await axios.get(
+          `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }
+        );
+
+        const dataArray = Array.isArray(res.data.records)
+          ? res.data.records
+          : [];
+        const cleaned = dataArray.map(cleanRecord);
+
+        // append progressively
+        setSellerRecords((prev) => [...prev, ...cleaned]);
+      }
+    } catch (err) {
         console.warn("Background prefetch stopped:", err.message);
       }
     })();
   }, [
     authToken,
-    fetchRecords,
-    fetchAllRecordsForCharts,
     totalPages,
     cleanRecord,
     limit,
