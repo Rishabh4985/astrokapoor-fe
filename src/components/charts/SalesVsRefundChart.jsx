@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import {
   PieChart,
@@ -9,6 +9,7 @@ import {
   Legend,
 } from "recharts";
 import { PieChartIcon } from "lucide-react";
+import { filterRecords, sumSalesVsRefund } from "./utils";
 
 const COLORS = ["#16a34a", "#ea580c"];
 
@@ -16,43 +17,32 @@ const API_URL = import.meta.env.DEV
   ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
-const CACHE_DURATION = 5 * 60 * 1000; // cache for 5 minutes
-
-const SalesVsRefundChart = () => {
+const SalesVsRefundChart = ({ filter = "all", category = "all" }) => {
   const { authToken, userRole } = useContext(AuthContext);
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const lastFetchedRef = useRef(null);
 
   useEffect(() => {
     if (!authToken || !userRole) {
       setLoading(false);
       setError("Not authenticated");
-      setData([]);
-      return;
-    }
-
-    const now = Date.now();
-    if (lastFetchedRef.current && now - lastFetchedRef.current < CACHE_DURATION) {
-      // Use cached data
+      setRecords([]);
       return;
     }
 
     setLoading(true);
     setError(null);
-    const basePath = `${API_URL}/${userRole}/charts`;
 
-    fetch(`${basePath}/sales-vs-refund`, {
+    fetch(`${API_URL}/${userRole}/charts/records`, {
       headers: { Authorization: `Bearer ${authToken}` },
     })
       .then((res) => {
-        if (!res.ok) throw new Error("Failed to fetch");
+        if (!res.ok) throw new Error("Failed to fetch records");
         return res.json();
       })
       .then((result) => {
-        setData(result);
-        lastFetchedRef.current = Date.now();
+        setRecords(result);
         setLoading(false);
       })
       .catch((err) => {
@@ -60,6 +50,11 @@ const SalesVsRefundChart = () => {
         setLoading(false);
       });
   }, [authToken, userRole]);
+
+  const data = useMemo(() => {
+    const filtered = filterRecords(records, filter, category);
+    return sumSalesVsRefund(filtered);
+  }, [records, filter, category]);
 
   const isEmpty =
     !data || data.length === 0 || data.every((entry) => entry.value === 0);

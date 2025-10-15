@@ -1,4 +1,4 @@
-import React, { useContext ,useState,useEffect} from "react";
+import React, { useContext, useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import { SellerContext } from "../../context/SellerContext";
 import { useAuth } from "../../context/AuthContext";
@@ -14,7 +14,9 @@ const SellerDashboard = () => {
   const { importSellerRecords } = useContext(SellerContext);
   const { currentSeller } = useAuth();
 
-  const [filter, setFilter] = useState(() => sessionStorage.getItem("sellerFilterType") || "all");
+  const [filter, setFilter] = useState(
+    () => sessionStorage.getItem("sellerFilterType") || "all"
+  );
   const [category, setCategory] = useState("all");
 
   useEffect(() => {
@@ -42,8 +44,12 @@ const SellerDashboard = () => {
     <div className="min-h-screen bg-gradient-to-b from-orange-50 to-white">
       <div className="w-full max-w-7xl mx-auto px-4 py-6 space-y-6">
         <header className="text-center space-y-3">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-orange-800">AstroKapoor</h1>
-          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-orange-600">Seller Dashboard</h2>
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-orange-800">
+            AstroKapoor
+          </h1>
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-semibold text-orange-600">
+            Seller Dashboard
+          </h2>
         </header>
 
         <div className="bg-white rounded-lg shadow-md border border-orange-200">
@@ -103,16 +109,16 @@ const SellerDashboard = () => {
         <div className="grid grid-cols-1 gap-4 sm:gap-6">
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
             <div className="xl:col-span-1">
-              <MonthlySalesChart />
+              <MonthlySalesChart filter={filter} category={category} />
             </div>
             <div className="xl:col-span-1">
-              <SalesVsRefundChart />
+              <SalesVsRefundChart filter={filter} category={category} />
             </div>
           </div>
 
           <div className="flex justify-center">
             <div className="w-full max-w-md xl:max-w-lg">
-              <StatusChart />
+              <StatusChart filter={filter} category={category} />
             </div>
           </div>
         </div>

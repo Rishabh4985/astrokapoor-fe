@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import {
   BarChart,
   Bar,
@@ -10,82 +10,45 @@ import {
 } from "recharts";
 import { LineChartIcon } from "lucide-react";
 import { AuthContext } from "../../context/AuthContext";
-
+import { filterRecords, groupMonthly } from "./utils";
 const API_URL = import.meta.env.DEV
   ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
 
-// Cache duration 5 minutes
-const CACHE_DURATION = 5 * 60 * 1000;
-
-const MonthlySalesChart = () => {
+const MonthlySalesChart = ({ filter = "all", category = "all" }) => {
   const { authToken, userRole } = useContext(AuthContext);
-  const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const lastFetchedRef = useRef(null);
 
   useEffect(() => {
     if (!authToken || !userRole) {
       setError("Not authenticated");
-      setData([]);
       setLoading(false);
       return;
     }
-
-    // Check cache freshness
-    const now = Date.now();
-    if (lastFetchedRef.current && (now - lastFetchedRef.current < CACHE_DURATION)) {
-      // Use cached data; do not fetch
-      return;
-    }
-
     setLoading(true);
-    setError(null);
-
-    const basePath = `${API_URL}/${userRole}/charts`;
-
-    fetch(`${basePath}/monthly-sales`, {
+    fetch(`${API_URL}/${userRole}/charts/records`, {
       headers: { Authorization: `Bearer ${authToken}` },
-    }).then((res) => {
-      if (!res.ok) throw new Error("Failed to fetch");
-      return res.json();
-    }).then((result) => {
-      setData(result);
-      lastFetchedRef.current = Date.now();
-      setLoading(false);
-    }).catch((err) => {
-      setError(err.message);
-      setLoading(false);
-    });
+    })
+      .then((res) => {
+        if (!res.ok) throw new Error("Failed to fetch records");
+        return res.json();
+      })
+      .then((data) => {
+        setRecords(data);
+        setLoading(false);
+      })
+      .catch((err) => {
+        setError(err.message);
+        setLoading(false);
+      });
   }, [authToken, userRole]);
 
-  // Memoize sorted data by full array to avoid anomalies
-  const sortedData = useMemo(() => {
-    if (!data?.length) return [];
-    const monthMap = {
-      Jan: 1,
-      Feb: 2,
-      Mar: 3,
-      Apr: 4,
-      May: 5,
-      Jun: 6,
-      Jul: 7,
-      Aug: 8,
-      Sep: 9,
-      Oct: 10,
-      Nov: 11,
-      Dec: 12,
-    };
-    return [...data].sort((a, b) => {
-      const [monthA, yearA] = a.name.split(" ");
-      const [monthB, yearB] = b.name.split(" ");
-      if (parseInt(yearA) === parseInt(yearB)) {
-        return monthMap[monthA] - monthMap[monthB];
-      }
-      return parseInt(yearA) - parseInt(yearB);
-    });
-  }, [data]);
+  const filteredAndGrouped = useMemo(() => {
+    const filtered = filterRecords(records, filter, category);
+    return groupMonthly(filtered);
+  }, [records, filter, category]);
 
   if (loading) return <div>Loading Monthly Sales Chart...</div>;
   if (error) return <div>Error: {error}</div>;
@@ -99,14 +62,14 @@ const MonthlySalesChart = () => {
         </h3>
       </div>
 
-      {sortedData.length === 0 ? (
+      {filteredAndGrouped.length === 0 ? (
         <div className="h-[350px] flex items-center justify-center text-gray-400 italic">
           No sales data available
         </div>
       ) : (
         <ResponsiveContainer width="100%" height={350}>
           <BarChart
-            data={sortedData}
+            data={filteredAndGrouped}
             margin={{ top: 10, right: 10, bottom: 10, left: 20 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
