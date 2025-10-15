@@ -429,57 +429,58 @@ const AdminSalesLookup = ({ onFilter }) => {
         </div>
       </div>
 
-      <div className="overflow-auto max-h-[500px] min-h-[300px] rounded-xl border border-orange-200 shadow-inner relative z-10">
-        <table className="min-w-full divide-y divide-orange-200 text-sm">
-          <thead className="bg-gradient-to-r from-orange-200 to-orange-100 text-orange-900 sticky top-0 z-10 shadow-sm">
-            <tr>
-              {headers.map((key) => (
-                <th
-                  key={key}
-                  className="px-4 py-2 font-semibold whitespace-nowrap text-center border-r border-orange-200"
-                >
-                  {headerLabels[key] || key}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentPageRecords.length > 0 ? (
-              currentPageRecords.map((rec, idx) => (
-                <tr
-                  key={idx}
-                  className={`transition-colors duration-200 ${
-                    idx % 2 === 0
-                      ? "bg-white hover:bg-orange-50"
-                      : "bg-orange-50 hover:bg-orange-100"
-                  }`}
-                >
-                  {headers.map((key) => (
-                    <td
-                      key={key}
-                      className="px-4 py-2 border-r border-orange-100 whitespace-nowrap text-center"
-                    >
-                      {formatValue(key, rec[key])}
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : (
+      <div className="relative">
+        <div className="overflow-auto max-h-[500px] min-h-[300px] rounded-xl border border-orange-200 shadow-inner relative z-10">
+          <table className="min-w-full divide-y divide-orange-200 text-sm">
+            <thead className="bg-gradient-to-r from-orange-200 to-orange-100 text-orange-900 sticky top-0 z-10 shadow-sm">
               <tr>
-                <td
-                  colSpan={headers.length}
-                  className="text-center py-6 text-gray-500 p-6"
-                >
-                  No matching records found from {flattenedRecords.length} total
-                  records.
-                </td>
+                {headers.map((key) => (
+                  <th
+                    key={key}
+                    className="px-4 py-2 font-semibold whitespace-nowrap text-center border-r border-orange-200"
+                  >
+                    {headerLabels[key] || key}
+                  </th>
+                ))}
               </tr>
-            )}
-          </tbody>
-        </table>
-
+            </thead>
+            <tbody>
+              {currentPageRecords.length > 0 ? (
+                currentPageRecords.map((rec, idx) => (
+                  <tr
+                    key={idx}
+                    className={`transition-colors duration-200 ${
+                      idx % 2 === 0
+                        ? "bg-white hover:bg-orange-50"
+                        : "bg-orange-50 hover:bg-orange-100"
+                    }`}
+                  >
+                    {headers.map((key) => (
+                      <td
+                        key={key}
+                        className="px-4 py-2 border-r border-orange-100 whitespace-nowrap text-center"
+                      >
+                        {formatValue(key, rec[key])}
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td
+                    colSpan={headers.length}
+                    className="text-center py-6 text-gray-500 p-6"
+                  >
+                    No matching records found from {flattenedRecords.length}{" "}
+                    total records.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
         {/* Pagination */}
-        <div className="flex justify-center items-center gap-4 mt-4 py-3 bg-white/50">
+        <div className="sticky bottom-0 bg-white flex justify-center items-center gap-4 py-2 border-t border-orange-300 z-10">
           <button
             onClick={() => goToPage(page - 1)}
             disabled={page <= 1}
@@ -491,10 +492,13 @@ const AdminSalesLookup = ({ onFilter }) => {
             Page {page} of {totalPages}
             <span className="text-sm ml-2 text-orange-600">
               {(() => {
-        const startIndex = (page - 1) * itemsPerPage + 1;
-        const endIndex = Math.min(page * itemsPerPage, filteredRecords.length);
-        return `(showing ${startIndex} to ${endIndex} of ${filteredRecords.length} filtered)`;
-      })()}
+                const startIndex = (page - 1) * itemsPerPage + 1;
+                const endIndex = Math.min(
+                  page * itemsPerPage,
+                  filteredRecords.length
+                );
+                return `(showing ${startIndex} to ${endIndex} of ${filteredRecords.length} filtered)`;
+              })()}
             </span>
           </span>
           <button

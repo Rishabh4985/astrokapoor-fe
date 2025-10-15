@@ -480,7 +480,7 @@ const SellerSalesLookup = ({ onFilter }) => {
         </div>
 
         {/* Table Section */}
-        <div className="p-4 sm:p-6">
+        <div className="relative p-4 sm:p-6">
           <div className="overflow-auto max-h-[60vh] min-h-[300px] rounded-lg border border-orange-200">
             <table className="min-w-full divide-y divide-orange-200 text-sm">
               <thead className="bg-orange-100 text-orange-800 sticky top-0 z-10">
@@ -537,7 +537,7 @@ const SellerSalesLookup = ({ onFilter }) => {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 p-4 bg-orange-50 rounded-lg">
+            <div className="sticky bottom-0 bg-white flex flex-col sm:flex-row justify-between items-center gap-4 p-4 rounded-lg border-t border-orange-300 z-10">
               <div className="text-sm text-orange-700 text-center sm:text-left">
                 <span className="text-xs text-orange-700">
                   (showing {startRecord}–{endRecord} of {filteredRecords.length}{" "}
