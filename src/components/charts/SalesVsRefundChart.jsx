@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from "react";
+import React, { useState, useEffect, useContext, useMemo, useRef } from "react";
 import { AuthContext } from "../../context/AuthContext";
 import {
   PieChart,
@@ -12,16 +12,18 @@ import { PieChartIcon } from "lucide-react";
 import { filterRecords, sumSalesVsRefund } from "./utils";
 
 const COLORS = ["#16a34a", "#ea580c"];
-
 const API_URL = import.meta.env.DEV
   ? "http://localhost:4000/api"
   : import.meta.env.VITE_API_URL;
+const CACHE_KEY = "salesVsRefundCache";
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 const SalesVsRefundChart = ({ filter = "all", category = "all" }) => {
   const { authToken, userRole } = useContext(AuthContext);
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const hasFetched = useRef(false);
 
   useEffect(() => {
     if (!authToken || !userRole) {
@@ -31,6 +33,20 @@ const SalesVsRefundChart = ({ filter = "all", category = "all" }) => {
       return;
     }
 
+    // Check cache first
+    const cachedData = sessionStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      const parsed = JSON.parse(cachedData);
+      if (Date.now() - parsed.timestamp < CACHE_DURATION) {
+        setRecords(parsed.data);
+        setLoading(false);
+        hasFetched.current = true;
+        return;
+      }
+    }
+
+    if (hasFetched.current) return;
+    hasFetched.current = true;
     setLoading(true);
     setError(null);
 
@@ -41,8 +57,12 @@ const SalesVsRefundChart = ({ filter = "all", category = "all" }) => {
         if (!res.ok) throw new Error("Failed to fetch records");
         return res.json();
       })
-      .then((result) => {
-        setRecords(result);
+      .then((data) => {
+        setRecords(data);
+        sessionStorage.setItem(
+          CACHE_KEY,
+          JSON.stringify({ data, timestamp: Date.now() })
+        );
         setLoading(false);
       })
       .catch((err) => {
