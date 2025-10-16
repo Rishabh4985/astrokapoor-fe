@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
+import { Country, State } from "country-state-city";
 
 const defaultFormData = {
   dateOfPayment: "",
@@ -44,7 +45,20 @@ const defaultFormData = {
   category: "",
 };
 
-const requiredFields = ["dateOfPayment", "customerName", "amount", "service"];
+const requiredFields = [
+  "dateOfPayment",
+  "customerName",
+  "amount",
+  "service",
+  "status",
+  "mobile1",
+  "email1",
+  "handleBy",
+  "transactionId",
+  "address",
+  "category",
+  "country",
+];
 
 const AddRecordForm = ({ onAdd }) => {
   const { authToken, userRole } = useAuth();
@@ -58,6 +72,12 @@ const AddRecordForm = ({ onAdd }) => {
   const [searchEmail, setSearchEmail] = useState("");
   const [existingUserData, setExistingUserData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const countries = Country.getAllCountries();
+  const states = selectedCountry
+    ? State.getStatesOfCountry(selectedCountry)
+    : [];
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -150,7 +170,9 @@ const AddRecordForm = ({ onAdd }) => {
       return;
     }
 
-    const API_BASE = import.meta.env.DEV ? "http://localhost:4000/api" : import.meta.env.VITE_API_URL;
+    const API_BASE = import.meta.env.DEV
+      ? "http://localhost:4000/api"
+      : import.meta.env.VITE_API_URL;
 
     const baseUrl =
       userRole === "admin"
@@ -280,8 +302,8 @@ const AddRecordForm = ({ onAdd }) => {
     service: ["Consultation", "Gemstones", "Products"],
     mode: ["Cash", "UPI", "Bank Transfer"],
     country: ["India", "USA", "UK", "Canada", "Australia", "Other"],
-    state: ["Delhi", "Maharashtra", "Karnataka", "UP", "Other"],
     category: ["Consultation", "Products", "Gemstones"],
+    overallRating: Array.from({ length: 10 }, (_, i) => i + 1),
   };
 
   const getInputType = (key) => {
@@ -389,7 +411,52 @@ const AddRecordForm = ({ onAdd }) => {
                     </label>
                   )}
 
-                  {dropdownOptions[key] ? (
+                  {key === "country" ? (
+                    <select
+                      id={key}
+                      name={key}
+                      value={formData[key]}
+                      onChange={(e) => {
+                        setFormData((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }));
+                        setSelectedCountry(e.target.value);
+                      }}
+                      className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                    >
+                      <option value="">Select Country</option>
+                      {countries.map((c) => (
+                        <option key={c.isoCode} value={c.isoCode}>
+                          {c.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : key === "state" ? (
+                    <select
+                      id={key}
+                      name={key}
+                      value={formData[key]}
+                      onChange={(e) =>
+                        setFormData((prev) => ({
+                          ...prev,
+                          [key]: e.target.value,
+                        }))
+                      }
+                      className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                    >
+                      <option value="">Select State</option>
+                      {states.length > 0 ? (
+                        states.map((s) => (
+                          <option key={s.isoCode} value={s.name}>
+                            {s.name}
+                          </option>
+                        ))
+                      ) : (
+                        <option disabled>No states available</option>
+                      )}
+                    </select>
+                  ) : dropdownOptions[key] ? (
                     <select
                       id={key}
                       name={key}
