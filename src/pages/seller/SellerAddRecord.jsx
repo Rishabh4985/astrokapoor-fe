@@ -12,8 +12,21 @@ import {
 const SellerAddRecord = () => {
   const { addSellerRecord } = useContext(SellerContext);
 
-  const handleAddRecord = (newRecord) => {
-    addSellerRecord(newRecord);
+  if (typeof addSellerRecord !== "function") {
+    console.error("❌ addSellerRecord is not ready yet.");
+    return (
+      <div className="p-10 text-center text-red-500">
+        Seller context not ready. Please refresh or log in again.
+      </div>
+    );
+  }
+
+  const handleAddRecord = async (newRecord) => {
+    try {
+      await addSellerRecord(newRecord);
+    } catch (err) {
+      console.error("❌ Failed to add seller record:", err);
+    }
   };
 
   return (

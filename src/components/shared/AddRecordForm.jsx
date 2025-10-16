@@ -150,7 +150,7 @@ const AddRecordForm = ({ onAdd }) => {
       return;
     }
 
-    const API_BASE = import.meta.env.DEV ? "" : import.meta.env.VITE_API_URL;
+    const API_BASE = import.meta.env.DEV ? "http://localhost:4000/api" : import.meta.env.VITE_API_URL;
 
     const baseUrl =
       userRole === "admin"

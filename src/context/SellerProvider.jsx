@@ -128,7 +128,7 @@ const SellerProvider = ({ children }) => {
       setLoadingCharts(true);
       if (!authToken) return;
 
-      const res = await axios.get(`${API_BASE}/records/charts`, {
+      const res = await axios.get(`${API_BASE}/charts/records`, {
         headers: { Authorization: `Bearer ${authToken}` },
         timeout: 30000,
       });
@@ -167,7 +167,7 @@ const SellerProvider = ({ children }) => {
           [chartType]: { ...prev[chartType], loading: true, error: null },
         }));
 
-        const response = await axios.get(`${API_BASE}/records/charts/${chartType}`, {
+        const response = await axios.get(`${API_BASE}/charts/records/${chartType}`, {
           headers: { Authorization: `Bearer ${authToken}` },
           timeout: 20000,
         });
@@ -336,7 +336,7 @@ const SellerProvider = ({ children }) => {
           handlerId: sellerEmail,
         };
 
-        const res = await axios.post(`${API_BASE}/records/handler`, recordToSend, {
+        const res = await axios.post(`${API_BASE}/records`, recordToSend, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
@@ -358,6 +358,7 @@ const SellerProvider = ({ children }) => {
         });
 
         console.log("📥 Seller record added successfully");
+        return res; 
       } catch (error) {
         console.error("Failed to add record", error);
         throw error;

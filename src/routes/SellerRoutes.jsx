@@ -4,7 +4,7 @@ import SellerDashboard from "../pages/seller/SellerDashboard";
 import SellerProfile from "../pages/seller/SellerProfile";
 import SellerLayout from "../layouts/SellerLayout";
 import SellerRecordList from "../pages/seller/SellerRecordList";
-import AddRecordForm from "../components/shared/AddRecordForm";
+import SellerAddRecord from "../pages/seller/SellerAddRecord";
 import SellerProvider from "../context/SellerProvider";
 import SellerSalesLookup from "../pages/seller/SellerSalesLookup";
 const isSellerLoggedIn = () => {
@@ -24,10 +24,7 @@ const SellerRoutes = () => {
           <Route path="seller-dashboard" element={<SellerDashboard />} />
           <Route path="seller-profile" element={<SellerProfile />} />
           <Route path="seller-records" element={<SellerRecordList />} />
-          <Route
-            path="seller-addrecord"
-            element={<AddRecordForm mode="seller" />}
-          />
+          <Route path="seller-addrecord" element={<SellerAddRecord />} />
           <Route path="seller-saleslookup" element={<SellerSalesLookup />} />
         </Route>
       </Routes>
