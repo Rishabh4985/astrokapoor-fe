@@ -38,14 +38,12 @@ const SellerRecordList = ({ onFilter }) => {
 
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => {
-      // Search match
       const matchesQuery = Object.values(record).some((val) =>
         String(val || "")
           .toLowerCase()
           .includes(query.toLowerCase())
       );
 
-      // Filter match
       const matchesFilters = Object.entries(filters).every(([key, value]) => {
         return (
           !value ||
@@ -122,7 +120,7 @@ const SellerRecordList = ({ onFilter }) => {
   }, new Set(expectedHeaders));
 
   const headers = Array.from(dynamicHeaders).filter(
-    (key) => key.trim() !== "" && key !== "serialno"
+    (key) => key.trim() !== "" && key !== "serialno" && key !== "_id"
   );
 
   const headerLabels = {
@@ -198,7 +196,7 @@ const SellerRecordList = ({ onFilter }) => {
 
   const handleEdit = (index) => {
     setEditingIndex(index);
-    setEditedRecord({ ...filteredRecords[index] });
+    setEditedRecord({ ...paginatedRecords[index] });
   };
 
   const handleChange = (key, value) => {
@@ -206,7 +204,13 @@ const SellerRecordList = ({ onFilter }) => {
   };
 
   const handleSave = async (index) => {
-    const recordToSave = filteredRecords[index];
+    const recordToSave = paginatedRecords[index];
+
+    if (!recordToSave || !recordToSave._id) {
+      toast.error("Record data is incomplete. Please reload and try again.");
+      return;
+    }
+
     const handler = (recordToSave.handlerId || "").toLowerCase().trim();
 
     if (!handler) {
@@ -219,7 +223,8 @@ const SellerRecordList = ({ onFilter }) => {
     }
 
     try {
-      await updateSellerRecord(recordToSave._id, editedRecord);
+      const recordWithUpdates = { ...recordToSave, ...editedRecord };
+      await updateSellerRecord(recordWithUpdates);
       toast.success("Record updated successfully!");
     } catch (error) {
       console.error(error);
@@ -264,7 +269,7 @@ const SellerRecordList = ({ onFilter }) => {
             placeholder="Search across all records..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full "
+            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           />
           {query && (
             <XCircle
@@ -417,7 +422,7 @@ const SellerRecordList = ({ onFilter }) => {
                         !nonEditableFields.includes(key) ? (
                           <input
                             type="text"
-                            value={editedRecord[key] || ""}
+                            value={editedRecord[key] !== undefined ? editedRecord[key] : record[key] || ""}
                             onChange={(e) => handleChange(key, e.target.value)}
                             className="border rounded p-1 w-full text-xs"
                           />

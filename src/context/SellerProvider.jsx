@@ -56,7 +56,7 @@ const SellerProvider = ({ children }) => {
   const isDataStale = useCallback((lastFetched) => {
     if (!lastFetched) return true;
     return Date.now() - lastFetched > CACHE_DURATION;
-  }, [CACHE_DURATION]);
+  }, []);
 
   const cleanRecord = useCallback((record) => {
     const omitKeys = (obj, keys) => {
@@ -65,7 +65,7 @@ const SellerProvider = ({ children }) => {
       return result;
     };
 
-    const filtered = omitKeys(record, ["_id", "createdAt", "updatedAt", "__v"]);
+    const filtered = omitKeys(record, ["createdAt", "updatedAt", "__v"]);
 
     return {
       ...filtered,
@@ -158,7 +158,7 @@ const SellerProvider = ({ children }) => {
         currentChartData.data.length > 0 &&
         !isDataStale(currentChartData.lastFetched)
       ) {
-        return currentChartData.data; // Return cached data
+        return currentChartData.data;
       }
 
       try {
@@ -167,7 +167,7 @@ const SellerProvider = ({ children }) => {
           [chartType]: { ...prev[chartType], loading: true, error: null },
         }));
 
-        const response = await axios.get(`${API_BASE}/charts/records/${chartType}`, {
+        const response = await axios.get(`${API_BASE}/charts/${chartType}`, {
           headers: { Authorization: `Bearer ${authToken}` },
           timeout: 20000,
         });
@@ -358,7 +358,7 @@ const SellerProvider = ({ children }) => {
         });
 
         console.log("📥 Seller record added successfully");
-        return res; 
+        return res;
       } catch (error) {
         console.error("Failed to add record", error);
         throw error;
@@ -368,25 +368,51 @@ const SellerProvider = ({ children }) => {
   );
 
   const updateSellerRecord = useCallback(
-    async (record) => {
-      try {
-        if (!authToken) throw new Error("No Auth Token");
+  async (recordData) => {
+    try {
+      if (!authToken) throw new Error("No Auth Token");
+      if (!recordData._id) throw new Error("Record ID is missing");
 
-        await axios.patch(`${API_BASE}/records/handler/${record._id}`, record, {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
+      const recordId = recordData._id;
 
-        fetchRecords(page);
-        fetchAllRecordsForCharts();
-        toast.success("Record updated successfully");
-      } catch (err) {
-        console.error(err);
-        toast.error("Failed to update record");
-        throw err;
+      // ✅ Convert dateOfPayment string back to proper Date format
+      let updatePayload = { ...recordData };
+      
+      // If dateOfPayment is a string like "16/10/2025", convert it back to ISO date
+      if (typeof updatePayload.dateOfPayment === "string" && updatePayload.dateOfPayment.includes("/")) {
+        const [day, month, year] = updatePayload.dateOfPayment.split("/");
+        updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
       }
-    },
-    [authToken, page, fetchRecords, fetchAllRecordsForCharts]
-  );
+
+      // Remove fields we don't want to update
+      const { _id, _handlerId, _createdAt, _updatedAt, ___v, ...cleanPayload } = updatePayload;
+
+      console.log("📤 Sending update for record:", recordId);
+      console.log("Payload keys:", Object.keys(cleanPayload));
+
+      const response = await axios.patch(
+        `${API_BASE}/records/${recordId}`,
+        cleanPayload,
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+        }
+      );
+
+      console.log("✅ Update successful");
+
+      fetchRecords(page);
+      fetchAllRecordsForCharts();
+      toast.success("Record updated successfully");
+      return response;
+    } catch (err) {
+      console.error("❌ Update failed:", err);
+      toast.error(err.response?.data?.message || "Failed to update record");
+      throw err;
+    }
+  },
+  [authToken, page, fetchRecords, fetchAllRecordsForCharts]
+);
+
 
   const updateSellerProfile = useCallback((updatedSeller) => {
     localStorage.setItem("currentSeller", JSON.stringify(updatedSeller));

@@ -99,7 +99,7 @@ const MonthlySalesChart = ({ filter = "all", category = "all" }) => {
         <ResponsiveContainer width="100%" height={350}>
           <BarChart
             data={filteredAndGrouped}
-            margin={{ top: 10, right: 10, bottom: 10, left: 20 }}
+            margin={{ top: 10, right: 10, bottom: 10, left: 40 }}
           >
             <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
             <XAxis dataKey="name" stroke="#92400e" />
