@@ -31,9 +31,24 @@ const SellerProvider = ({ children }) => {
   const [loadingCharts, setLoadingCharts] = useState(false);
 
   const [chartData, setChartData] = useState({
-    "monthly-sales": { data: [], loading: false, error: null, lastFetched: null },
-    "sales-vs-refund": { data: [], loading: false, error: null, lastFetched: null },
-    "status-count": { data: [], loading: false, error: null, lastFetched: null },
+    "monthly-sales": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
+    "sales-vs-refund": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
+    "status-count": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
   });
 
   const chartDataRef = useRef(chartData);
@@ -53,10 +68,13 @@ const SellerProvider = ({ children }) => {
 
   const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-  const isDataStale = useCallback((lastFetched) => {
-    if (!lastFetched) return true;
-    return Date.now() - lastFetched > CACHE_DURATION;
-  }, []);
+  const isDataStale = useCallback(
+    (lastFetched) => {
+      if (!lastFetched) return true;
+      return Date.now() - lastFetched > CACHE_DURATION;
+    },
+    [CACHE_DURATION]
+  );
 
   const cleanRecord = useCallback((record) => {
     const omitKeys = (obj, keys) => {
@@ -236,9 +254,24 @@ const SellerProvider = ({ children }) => {
 
   const clearChartCache = useCallback(() => {
     setChartData({
-      "monthly-sales": { data: [], loading: false, error: null, lastFetched: null },
-      "sales-vs-refund": { data: [], loading: false, error: null, lastFetched: null },
-      "status-count": { data: [], loading: false, error: null, lastFetched: null },
+      "monthly-sales": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
+      "sales-vs-refund": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
+      "status-count": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
     });
   }, []);
 
@@ -266,7 +299,9 @@ const SellerProvider = ({ children }) => {
             }
           );
 
-          const dataArray = Array.isArray(res.data.records) ? res.data.records : [];
+          const dataArray = Array.isArray(res.data.records)
+            ? res.data.records
+            : [];
           const cleaned = dataArray.map(cleanRecord);
 
           allFetched = [...allFetched, ...cleaned];
@@ -295,7 +330,9 @@ const SellerProvider = ({ children }) => {
       if (!sellerEmail) return;
 
       const normalize = (val) =>
-        typeof val === "string" ? val.toLowerCase().trim() : val?.toString().trim();
+        typeof val === "string"
+          ? val.toLowerCase().trim()
+          : val?.toString().trim();
 
       const flatRecords = importedRecords.map((record) => ({
         ...record,
@@ -368,55 +405,65 @@ const SellerProvider = ({ children }) => {
   );
 
   const updateSellerRecord = useCallback(
-  async (recordData) => {
-    try {
-      if (!authToken) throw new Error("No Auth Token");
-      if (!recordData._id) throw new Error("Record ID is missing");
+    async (recordData) => {
+      try {
+        if (!authToken) throw new Error("No Auth Token");
+        if (!recordData._id) throw new Error("Record ID is missing");
 
-      const recordId = recordData._id;
+        const recordId = recordData._id;
 
-      // ✅ Convert dateOfPayment string back to proper Date format
-      let updatePayload = { ...recordData };
-      
-      // If dateOfPayment is a string like "16/10/2025", convert it back to ISO date
-      if (typeof updatePayload.dateOfPayment === "string" && updatePayload.dateOfPayment.includes("/")) {
-        const [day, month, year] = updatePayload.dateOfPayment.split("/");
-        updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
-      }
+        // ✅ Convert dateOfPayment string back to proper Date format
+        let updatePayload = { ...recordData };
 
-      // Remove fields we don't want to update
-      const { _id, _handlerId, _createdAt, _updatedAt, ___v, ...cleanPayload } = updatePayload;
-
-      console.log("📤 Sending update for record:", recordId);
-      console.log("Payload keys:", Object.keys(cleanPayload));
-
-      const response = await axios.patch(
-        `${API_BASE}/records/${recordId}`,
-        cleanPayload,
-        {
-          headers: { Authorization: `Bearer ${authToken}` },
+        // If dateOfPayment is a string like "16/10/2025", convert it back to ISO date
+        if (
+          typeof updatePayload.dateOfPayment === "string" &&
+          updatePayload.dateOfPayment.includes("/")
+        ) {
+          const [day, month, year] = updatePayload.dateOfPayment.split("/");
+          updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
         }
-      );
 
-      console.log("✅ Update successful");
+        // Remove fields we don't want to update
+        const {
+          _id,
+          _handlerId,
+          _createdAt,
+          _updatedAt,
+          ___v,
+          ...cleanPayload
+        } = updatePayload;
 
-      fetchRecords(page);
-      fetchAllRecordsForCharts();
-      toast.success("Record updated successfully");
-      return response;
-    } catch (err) {
-      console.error("❌ Update failed:", err);
-      toast.error(err.response?.data?.message || "Failed to update record");
-      throw err;
-    }
-  },
-  [authToken, page, fetchRecords, fetchAllRecordsForCharts]
-);
+        console.log("📤 Sending update for record:", recordId);
+        console.log("Payload keys:", Object.keys(cleanPayload));
 
+        const response = await axios.patch(
+          `${API_BASE}/records/${recordId}`,
+          cleanPayload,
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
+          }
+        );
+
+        console.log("✅ Update successful");
+
+        fetchRecords(page);
+        fetchAllRecordsForCharts();
+        toast.success("Record updated successfully");
+        return response;
+      } catch (err) {
+        console.error("❌ Update failed:", err);
+        toast.error(err.response?.data?.message || "Failed to update record");
+        throw err;
+      }
+    },
+    [authToken, page, fetchRecords, fetchAllRecordsForCharts]
+  );
 
   const updateSellerProfile = useCallback((updatedSeller) => {
     localStorage.setItem("currentSeller", JSON.stringify(updatedSeller));
-    const allSalespersons = JSON.parse(localStorage.getItem("salespersons")) || [];
+    const allSalespersons =
+      JSON.parse(localStorage.getItem("salespersons")) || [];
     const updatedSalespersons = allSalespersons.map((sp) =>
       sp.email === updatedSeller.email ? updatedSeller : sp
     );

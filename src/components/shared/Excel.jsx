@@ -56,9 +56,9 @@ const Excel = ({ onImport, onExport }) => {
 
   const normalizeService = (value) => {
     const val = (value || "").toString().trim().toLowerCase();
-    if (val.includes("Consultation")) return "Consultation";
-    if (val.includes("Products")) return "Products";
-    if (val.includes("Gemstones")) return "Gemstones";
+    if (val.includes("consultation")) return "Consultation";
+    if (val.includes("products")) return "Products";
+    if (val.includes("gemstones")) return "Gemstones";
 
     return value;
   };
@@ -75,7 +75,7 @@ const Excel = ({ onImport, onExport }) => {
           : import.meta.env.VITE_API_URL;
 
         await axios.post(
-          `${API_BASE}/admin/import-records`,
+          `${API_BASE}/api/admin/import-records`,
           { records: chunk },
           {
             headers: { Authorization: `Bearer ${token}` },
@@ -158,9 +158,10 @@ const Excel = ({ onImport, onExport }) => {
                 }
                 obj[key] = value;
               });
-              if (!obj.category || obj.category.trim() === "") {
-                obj.category = sheetName;
-              }
+              obj.category = (obj.category || sheetName || "")
+                .toString()
+                .trim()
+                .toLowerCase();
               return obj;
             });
 
@@ -217,7 +218,7 @@ const Excel = ({ onImport, onExport }) => {
     try {
       const records = onExport();
 
-      const categories = ["Consultation", "Products", "Gemstones"];
+      const categories = ["consultation", "products", "gemstones"];
 
       const reverseHeaderMap = Object.entries(headerMap).reduce(
         (acc, [excelHeader, fieldName]) => {
@@ -242,11 +243,21 @@ const Excel = ({ onImport, onExport }) => {
 
       const workbook = XLSX.utils.book_new();
 
+      const sheetNameMap = {
+        consultation: "Consultation",
+        products: "Products",
+        gemstones: "Gemstones",
+      };
+
       categories.forEach((category) => {
         const data = filterAndMapRecords(category);
         if (data.length > 0) {
           const worksheet = XLSX.utils.json_to_sheet(data);
-          XLSX.utils.book_append_sheet(workbook, worksheet, category);
+          XLSX.utils.book_append_sheet(
+            workbook,
+            worksheet,
+            sheetNameMap[category]
+          );
         }
       });
 
