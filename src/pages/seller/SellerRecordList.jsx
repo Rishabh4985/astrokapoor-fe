@@ -514,7 +514,6 @@
 // };
 
 // export default SellerRecordList;
-
 import React, { useContext, useEffect, useState, useMemo } from "react";
 import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
@@ -556,9 +555,7 @@ const SellerRecordList = ({ onFilter }) => {
   const filteredRecords = useMemo(() => {
     return visibleRecords.filter((record) => {
       const matchesQuery = Object.values(record).some((val) =>
-        String(val || "")
-          .toLowerCase()
-          .includes(query.toLowerCase())
+        String(val || "").toLowerCase().includes(query.toLowerCase())
       );
 
       const matchesFilters = Object.entries(filters).every(([key, value]) => {
@@ -572,10 +569,7 @@ const SellerRecordList = ({ onFilter }) => {
     });
   }, [visibleRecords, query, filters]);
 
-  const totalPages = Math.max(
-    1,
-    Math.ceil(filteredRecords.length / itemsPerPage)
-  );
+  const totalPages = Math.max(1, Math.ceil(filteredRecords.length / itemsPerPage));
 
   const paginatedRecords = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
@@ -719,9 +713,7 @@ const SellerRecordList = ({ onFilter }) => {
     // make a shallow copy and normalize category locally for editing
     setEditedRecord({
       ...record,
-      category: record.category
-        ? String(record.category).toLowerCase().trim()
-        : record.category,
+      category: record.category ? String(record.category).toLowerCase().trim() : record.category,
     });
   };
 
@@ -737,10 +729,7 @@ const SellerRecordList = ({ onFilter }) => {
     }
 
     const cat = (recordToSave.category || "").toString().toLowerCase().trim();
-    const handler = (recordToSave.handlerId || "")
-      .toString()
-      .toLowerCase()
-      .trim();
+    const handler = (recordToSave.handlerId || "").toString().toLowerCase().trim();
 
     // Non-consultation → block if owned by other seller
     if (cat !== "consultation") {
@@ -794,10 +783,7 @@ const SellerRecordList = ({ onFilter }) => {
   };
 
   const startRecord = (currentPage - 1) * itemsPerPage + 1;
-  const endRecord = Math.min(
-    currentPage * itemsPerPage,
-    filteredRecords.length
-  );
+  const endRecord = Math.min(currentPage * itemsPerPage, filteredRecords.length);
 
   return (
     <div className="bg-white rounded-2xl shadow-lg mb-8 p-6 border border-orange-100 space-y-4">
@@ -836,9 +822,7 @@ const SellerRecordList = ({ onFilter }) => {
           <Filter className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
           <select
             value={filters.status}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, status: e.target.value }))
-            }
+            onChange={(e) => setFilters((prev) => ({ ...prev, status: e.target.value }))}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.status}</option>
@@ -854,9 +838,7 @@ const SellerRecordList = ({ onFilter }) => {
           <ClipboardEdit className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
           <select
             value={filters.service}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, service: e.target.value }))
-            }
+            onChange={(e) => setFilters((prev) => ({ ...prev, service: e.target.value }))}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.service}</option>
@@ -872,9 +854,7 @@ const SellerRecordList = ({ onFilter }) => {
           <Globe className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
           <select
             value={filters.country}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, country: e.target.value }))
-            }
+            onChange={(e) => setFilters((prev) => ({ ...prev, country: e.target.value }))}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.country}</option>
@@ -890,9 +870,7 @@ const SellerRecordList = ({ onFilter }) => {
           <UserCheck className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
           <select
             value={filters.expert}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, expert: e.target.value }))
-            }
+            onChange={(e) => setFilters((prev) => ({ ...prev, expert: e.target.value }))}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.expert}</option>
@@ -908,9 +886,7 @@ const SellerRecordList = ({ onFilter }) => {
           <Send className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
           <select
             value={filters.mode}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, mode: e.target.value }))
-            }
+            onChange={(e) => setFilters((prev) => ({ ...prev, mode: e.target.value }))}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.mode}</option>
@@ -927,13 +903,7 @@ const SellerRecordList = ({ onFilter }) => {
         <button
           onClick={() => {
             setQuery("");
-            setFilters({
-              status: "",
-              service: "",
-              country: "",
-              expert: "",
-              mode: "",
-            });
+            setFilters({ status: "", service: "", country: "", expert: "", mode: "" });
           }}
           className="text-sm text-orange-600 hover:underline"
         >
@@ -947,57 +917,30 @@ const SellerRecordList = ({ onFilter }) => {
             <thead className="bg-orange-100 text-orange-800 sticky top-0 z-10">
               <tr>
                 {headers.map((key) => (
-                  <th
-                    key={key}
-                    className="px-4 py-2 border font-medium text-center text-orange-900 whitespace-nowrap"
-                  >
+                  <th key={key} className="px-4 py-2 border font-medium text-center text-orange-900 whitespace-nowrap">
                     {headerLabels[key] || key}
                   </th>
                 ))}
-                <th className="px-4 py-2 border text-xs font-semibold text-orange-900">
-                  Actions
-                </th>
+                <th className="px-4 py-2 border text-xs font-semibold text-orange-900">Actions</th>
               </tr>
             </thead>
             <tbody>
               {paginatedRecords.length ? (
                 paginatedRecords.map((record) => {
                   const isEditing = editingId === record._id;
-                  const cat = (record.category || "")
-                    .toString()
-                    .toLowerCase()
-                    .trim();
-                  const handler = (record.handlerId || "")
-                    .toString()
-                    .toLowerCase()
-                    .trim();
-                  const isBlocked =
-                    !sellerEmail ||
-                    (cat !== "consultation" &&
-                      handler &&
-                      handler !== sellerEmail);
+                  const cat = (record.category || "").toString().toLowerCase().trim();
+                  const handler = (record.handlerId || "").toString().toLowerCase().trim();
+                  const isBlocked = !sellerEmail || (cat !== "consultation" && handler && handler !== sellerEmail);
 
                   return (
-                    <tr
-                      key={record._id}
-                      className="hover:bg-orange-50 border-b text-center"
-                    >
+                    <tr key={record._id} className="hover:bg-orange-50 border-b text-center">
                       {headers.map((key) => (
-                        <td
-                          key={key}
-                          className="px-3 py-2 border whitespace-nowrap"
-                        >
+                        <td key={key} className="px-3 py-2 border whitespace-nowrap">
                           {isEditing && !nonEditableFields.includes(key) ? (
                             <input
                               type="text"
-                              value={
-                                editedRecord[key] !== undefined
-                                  ? editedRecord[key]
-                                  : record[key] ?? ""
-                              }
-                              onChange={(e) =>
-                                handleChange(key, e.target.value)
-                              }
+                              value={editedRecord[key] !== undefined ? editedRecord[key] : record[key] ?? ""}
+                              onChange={(e) => handleChange(key, e.target.value)}
                               className="border rounded p-1 w-full text-xs"
                             />
                           ) : (
@@ -1008,18 +951,13 @@ const SellerRecordList = ({ onFilter }) => {
 
                       <td className="px-3 py-2 border">
                         {isEditing ? (
-                          <button
-                            onClick={() => handleSave(record._id)}
-                            className="text-green-600 hover:underline text-xs"
-                          >
+                          <button onClick={() => handleSave(record._id)} className="text-green-600 hover:underline text-xs">
                             Save
                           </button>
                         ) : (
                           <button
                             onClick={() => !isBlocked && handleEdit(record)}
-                            className={`text-blue-600 hover:underline text-xs ${
-                              isBlocked ? "opacity-50 cursor-not-allowed" : ""
-                            }`}
+                            className={`text-blue-600 hover:underline text-xs ${isBlocked ? "opacity-50 cursor-not-allowed" : ""}`}
                             disabled={isBlocked}
                           >
                             Edit
@@ -1031,10 +969,7 @@ const SellerRecordList = ({ onFilter }) => {
                 })
               ) : (
                 <tr>
-                  <td
-                    colSpan={headers.length + 1}
-                    className="text-center text-gray-500 py-6"
-                  >
+                  <td colSpan={headers.length + 1} className="text-center text-gray-500 py-6">
                     No records found from {visibleRecords.length} total records.
                   </td>
                 </tr>
@@ -1044,25 +979,14 @@ const SellerRecordList = ({ onFilter }) => {
         </div>
 
         <div className="sticky bottom-0 bg-white flex justify-center items-center gap-4 py-2 border-t border-orange-300 z-10">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-            className="px-4 py-2 bg-orange-300 text-white rounded disabled:opacity-50"
-          >
+          <button onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))} disabled={currentPage === 1} className="px-4 py-2 bg-orange-300 text-white rounded disabled:opacity-50">
             Previous
           </button>
           <span>
             Page {currentPage} of {totalPages} &nbsp;
-            <span className="text-xs text-orange-700">
-              (showing {startRecord}–{endRecord} of {filteredRecords.length}{" "}
-              filtered)
-            </span>
+            <span className="text-xs text-orange-700">(showing {startRecord}–{endRecord} of {filteredRecords.length} filtered)</span>
           </span>
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-            disabled={currentPage === totalPages}
-            className="px-4 py-2 bg-orange-500 text-white rounded disabled:opacity-50"
-          >
+          <button onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))} disabled={currentPage === totalPages} className="px-4 py-2 bg-orange-500 text-white rounded disabled:opacity-50">
             Next
           </button>
         </div>
