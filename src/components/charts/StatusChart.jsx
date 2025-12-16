@@ -21,9 +21,11 @@ const CACHE_DURATION = 5 * 60 * 1000;
 
 const StatusChart = ({ filter = "all", category = "all" }) => {
   const { authToken, userRole } = useContext(AuthContext);
+
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -34,7 +36,6 @@ const StatusChart = ({ filter = "all", category = "all" }) => {
       return;
     }
 
-    // Check cache first
     const cachedData = sessionStorage.getItem(CACHE_KEY);
     if (cachedData) {
       const parsed = JSON.parse(cachedData);
@@ -48,8 +49,6 @@ const StatusChart = ({ filter = "all", category = "all" }) => {
 
     if (hasFetched.current) return;
     hasFetched.current = true;
-    setLoading(true);
-    setError(null);
 
     fetch(`${API_URL}/${userRole}/charts/records`, {
       headers: { Authorization: `Bearer ${authToken}` },
@@ -77,16 +76,10 @@ const StatusChart = ({ filter = "all", category = "all" }) => {
     return countStatus(filtered);
   }, [records, filter, category]);
 
+  const isEmpty = !data || data.length === 0;
+
   if (loading) return <div>Loading Status Chart...</div>;
   if (error) return <div>Error: {error}</div>;
-
-  if (!data.length) {
-    return (
-      <div className="h-[350px] flex items-center justify-center text-gray-400 italic">
-        No status data available
-      </div>
-    );
-  }
 
   return (
     <div className="bg-orange-50 border border-orange-200 rounded-2xl shadow-md p-4 sm:p-6 mb-6 w-full overflow-visible">
@@ -97,25 +90,35 @@ const StatusChart = ({ filter = "all", category = "all" }) => {
         </h3>
       </div>
 
-      <ResponsiveContainer width="100%" height={350}>
-        <BarChart
-          data={data}
-          margin={{ top: 10, right: 0, bottom: 10, left: -17 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
-          <XAxis dataKey="name" stroke="#92400e" />
-          <YAxis stroke="#92400e" domain={[0, "dataMax"]} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "#fff7ed",
-              borderColor: "#facc15",
-              fontSize: "14px",
-            }}
-            cursor={{ fill: "rgba(250, 204, 21, 0.2)" }}
-          />
-          <Bar dataKey="value" fill="#facc15" radius={[6, 6, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+      {isEmpty ? (
+        <div className="h-[350px] flex items-center justify-center text-gray-400 italic">
+          No status data available
+        </div>
+      ) : (
+        <ResponsiveContainer width="100%" height={350}>
+          <BarChart
+            data={data}
+            margin={{ top: 10, right: 0, bottom: 10, left: -17 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
+            <XAxis dataKey="name" stroke="#92400e" />
+            <YAxis stroke="#92400e" domain={[0, "dataMax"]} />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#fff7ed",
+                borderColor: "#facc15",
+                fontSize: "14px",
+              }}
+              cursor={{ fill: "rgba(250, 204, 21, 0.2)" }}
+            />
+            <Bar
+              dataKey="value"
+              fill="#facc15"
+              radius={[6, 6, 0, 0]}
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      )}
     </div>
   );
 };

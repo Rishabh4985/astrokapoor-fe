@@ -72,9 +72,9 @@ const AdminDashBoard = () => {
               className="border rounded px-3 py-1 bg-white text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="all">All</option>
-              <option value="Gemstones">Gemstones</option>
-              <option value="Products">Products</option>
-              <option value="Consultation">Consultation</option>
+              <option value="gemstones">Gemstones</option>
+              <option value="products">Products</option>
+              <option value="consultation">Consultation</option>
             </select>
           </label>
 
@@ -96,11 +96,22 @@ const AdminDashBoard = () => {
         </div>
       </section>
 
-      <main className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <MonthlySalesChart filter={filter} category={category} />
-        <SalesVsRefundChart filter={filter} category={category} />
-        <StatusChart filter={filter} category={category} />
-      </main>
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+            <div className="xl:col-span-1">
+              <MonthlySalesChart filter={filter} category={category} />
+            </div>
+            <div className="xl:col-span-1">
+              <SalesVsRefundChart filter={filter} category={category} />
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="w-full max-w-md xl:max-w-lg">
+              <StatusChart filter={filter} category={category} />
+            </div>
+          </div>
+        </div>
     </div>
   );
 };

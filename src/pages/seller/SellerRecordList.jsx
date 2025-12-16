@@ -612,21 +612,25 @@ const SellerRecordList = ({ onFilter }) => {
     "gems2",
     "gems3",
     "gems4",
-    "communication",
-    "solutions",
-    "solDetails",
-    "overallRating",
-    "remarks",
-    "qualityDesc",
-    "feedStatus",
-    "additionalInfo",
-    "feedbackComment",
     "address",
-    "airBillNo",
-    "productsName",
     "skuNo",
-    "category",
   ];
+
+  const hiddenFields = [
+  "communication",
+  "solutions",
+  "solDetails",
+  "overallRating",
+  "remarks",
+  "qualityDesc",
+  "feedStatus",
+  "additionalInfo",
+  "feedbackComment",
+  "airBillNo",
+  "productsName",
+  "gems3",
+  "gems4",
+];
 
   const dynamicHeaders = visibleRecords.reduce((set, record) => {
     Object.keys(record).forEach((key) => set.add(key));
@@ -634,7 +638,7 @@ const SellerRecordList = ({ onFilter }) => {
   }, new Set(expectedHeaders));
 
   const headers = Array.from(dynamicHeaders).filter(
-    (key) => key && key.trim() !== "" && key !== "serialno" && key !== "_id"
+    (key) => key && key.trim() !== "" && key !== "serialno" && key !== "_id" && !hiddenFields.includes(key)
   );
 
   const headerLabels = {
@@ -663,18 +667,7 @@ const SellerRecordList = ({ onFilter }) => {
     gems2: "Gem-2",
     gems3: "Gem-3",
     gems4: "Gem-4",
-    communication: "Communication",
-    solutions: "Solutions",
-    solDetails: "Solution Details",
-    overallRating: "Overall Rating",
-    remarks: "Remark",
-    qualityDesc: "Quality Description",
-    feedStatus: "Feed Status",
-    additionalInfo: "Additional Info",
-    feedbackComment: "Feedback Comment",
     address: "Address",
-    airBillNo: "Air Bill Number",
-    productsName: "Product Name",
     skuNo: "SKU NO",
     category: "Category",
   };
