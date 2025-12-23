@@ -3,8 +3,6 @@ import { toast } from "react-toastify";
 import axios from "axios";
 import { UserPlus, List, Trash2, Pencil, Loader2 } from "lucide-react";
 
-
-
 const ManageSalesPerson = () => {
   const [activeTab, setActiveTab] = useState("add");
   const [firstName, setFirstName] = useState("");
@@ -16,10 +14,6 @@ const ManageSalesPerson = () => {
 
   const token = localStorage.getItem("authToken");
   const API_URL = import.meta.env.VITE_API_URL;
-
-  console.log("API_URL:", API_URL);
-console.log("TOKEN:", token);
-
 
   const fetchSalespersons = useCallback(async () => {
     try {
