@@ -70,21 +70,22 @@ const SellerSalesLookup = ({ onFilter }) => {
   const [category, setCategory] = useState("all");
   const itemsPerPage = 100;
 
-  const getCurrentSellerEmail = useCallback(() => {
-    const seller = JSON.parse(localStorage.getItem("currentSeller"));
-    return seller?.email?.toLowerCase().trim();
-  }, []);
+  // const getCurrentSellerEmail = useCallback(() => {
+  //   const seller = JSON.parse(localStorage.getItem("currentSeller"));
+  //   return seller?.email?.toLowerCase().trim();
+  // }, []);
 
-  const sellerEmail = getCurrentSellerEmail();
+  // const sellerEmail = getCurrentSellerEmail();
 
   const flattenedRecords = useMemo(() => {
     if (!sellerRecords || !Array.isArray(sellerRecords)) return [];
 
-    return sellerRecords.filter((record) => {
-      const handler = record.handlerId?.toLowerCase().trim();
-      return !handler || handler === sellerEmail;
-    });
-  }, [sellerRecords, sellerEmail]);
+    return sellerRecords;
+    // return sellerRecords.filter((record) => {
+    //   const handler = record.handlerId?.toLowerCase().trim();
+    //   return !handler || handler === sellerEmail;
+    // });
+  }, [sellerRecords]);
 
   const dynamicHeaders = useMemo(() => {
     return flattenedRecords.reduce((set, record) => {
@@ -95,7 +96,7 @@ const SellerSalesLookup = ({ onFilter }) => {
 
   const headers = useMemo(() => {
     return Array.from(dynamicHeaders).filter(
-      (key) => key.trim() !== "" && key !== "serialno"
+      (key) => key.trim() !== "" && key !== "serialno" && key !== "_id"
     );
   }, [dynamicHeaders]);
 
@@ -143,6 +144,18 @@ const SellerSalesLookup = ({ onFilter }) => {
 
   const formatValue = useCallback((key, value) => {
     if (value === null || value === undefined || value === "") return "-";
+
+    if (key === "category" && typeof value === "string") {
+      return value.charAt(0).toUpperCase() + value.slice(1).toLowerCase();
+    }
+
+    if (key === "country" && typeof value === "string") {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
+
+    if (key === "state" && typeof value === "string") {
+      return value.charAt(0).toUpperCase() + value.slice(1);
+    }
 
     if (typeof value === "object") {
       if (value?.seconds) {

@@ -11,6 +11,7 @@ const Excel = ({ onImport, onExport }) => {
   const { currentSeller, isAdmin } = useAuth();
   const adminContext = useContext(AdminContext);
   const sellerContext = useContext(SellerContext);
+  const showImport = !currentSeller || isAdmin;
 
   const headerMap = {
     Date: "dateOfPayment",
@@ -64,7 +65,7 @@ const Excel = ({ onImport, onExport }) => {
   };
 
   const uploadRecordsToBackend = async (records) => {
-    const chunkSize = 100; // smaller chunks are safer
+    const chunkSize = 100; // smaller chunks
     const token = localStorage.getItem("authToken");
 
     for (let i = 0; i < records.length; i += chunkSize) {
@@ -271,18 +272,19 @@ const Excel = ({ onImport, onExport }) => {
 
   return (
     <div className="flex flex-wrap gap-4 mt-4">
-      <label className="flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-700 hover:to-red-600 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all shadow-md">
-        <Upload className="w-5 h-5" />
-        Import Excel
-        <input
-          type="file"
-          accept=".xlsx, .xls"
-          multiple
-          onChange={handleFileUpload}
-          className="hidden"
-        />
-      </label>
-
+      {showImport && (
+        <label className="flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-700 hover:to-red-600 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all shadow-md">
+          <Upload className="w-5 h-5" />
+          Import Excel
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            multiple
+            onChange={handleFileUpload}
+            className="hidden"
+          />
+        </label>
+      )}
       <button
         onClick={handleExportClick}
         className="flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-yellow-600 to-orange-500 hover:from-yellow-700 hover:to-orange-600 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md"

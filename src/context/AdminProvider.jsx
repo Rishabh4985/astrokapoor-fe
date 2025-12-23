@@ -159,7 +159,7 @@ const AdminProvider = ({ children }) => {
     };
   }, []);
 
-  // ✅ New paginated fetch (matches backend)
+  // New paginated fetch (matches backend)
   const fetchRecords = useCallback(
     async (pageNumber = 1) => {
       if (!authToken) return;
@@ -197,14 +197,11 @@ const AdminProvider = ({ children }) => {
     [authToken, limit, cleanRecord]
   );
 
-  // ✅ Optional: fetch *all* records for charts or export
   const fetchAllRecords = useCallback(async () => {
     if (!authToken) return;
     try {
       setLoadingAll(true);
       setError(null);
-
-      // Use same endpoint but disable pagination by using very large limit
       const res = await axios.get(`${API_BASE}/records?limit=1000000`, {
         headers: { Authorization: `Bearer ${authToken}` },
         timeout: 60000,
@@ -229,7 +226,7 @@ const AdminProvider = ({ children }) => {
     fetchAllRecords();
   }, [authToken, fetchRecords, fetchAllRecords]);
 
-  // ✅ Pagination control
+  // Pagination control
   const goToPage = useCallback(
     (pageNumber) => {
       if (pageNumber < 1 || pageNumber > totalPages) return;
@@ -238,7 +235,7 @@ const AdminProvider = ({ children }) => {
     [fetchRecords, totalPages]
   );
 
-  // ✅ Local import
+  // Local import
   const importRecords = useCallback((importedRecords) => {
     try {
       setError(null);
@@ -264,7 +261,7 @@ const AdminProvider = ({ children }) => {
     }
   }, []);
 
-  // ✅ Add record
+  // Add record
   const addRecord = useCallback(
     async (newRecord) => {
       try {

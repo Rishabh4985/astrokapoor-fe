@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { User, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 
-//Navbar
 const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
   const navigate = useNavigate();
   const { logout } = useAuth();
@@ -38,7 +37,6 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
     };
   }, []);
 
-  //Navigation
   const handleNavigation = (path) => {
     navigate(path);
     setDropdownOpen(false);

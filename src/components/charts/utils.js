@@ -1,5 +1,3 @@
-// src/components/charts/utils.js
-
 export const buildDateFilter = (filter) => {
   const now = new Date();
   let startDate, endDate;

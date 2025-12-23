@@ -412,7 +412,7 @@ const SellerProvider = ({ children }) => {
 
         const recordId = recordData._id;
 
-        // ✅ Convert dateOfPayment string back to proper Date format
+        // Convert dateOfPayment string back to proper Date format
         let updatePayload = { ...recordData };
 
         // If dateOfPayment is a string like "16/10/2025", convert it back to ISO date
@@ -434,9 +434,6 @@ const SellerProvider = ({ children }) => {
           ...cleanPayload
         } = updatePayload;
 
-        console.log("📤 Sending update for record:", recordId);
-        console.log("Payload keys:", Object.keys(cleanPayload));
-
         const response = await axios.patch(
           `${API_BASE}/records/${recordId}`,
           cleanPayload,
@@ -445,14 +442,11 @@ const SellerProvider = ({ children }) => {
           }
         );
 
-        console.log("✅ Update successful");
-
         fetchRecords(page);
         fetchAllRecordsForCharts();
         toast.success("Record updated successfully");
         return response;
       } catch (err) {
-        console.error("❌ Update failed:", err);
         toast.error(err.response?.data?.message || "Failed to update record");
         throw err;
       }
@@ -492,6 +486,17 @@ const SellerProvider = ({ children }) => {
     }
   }, [authToken, cleanRecord]);
 
+  const getRecordHistory = useCallback(
+    async (recordId) => {
+      if (!authToken) throw new Error("No Auth Token");
+      const res = await axios.get(`${API_BASE}/history/${recordId}`, {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      return res.data;
+    },
+    [authToken]
+  );
+
   return (
     <SellerContext.Provider
       value={{
@@ -512,6 +517,7 @@ const SellerProvider = ({ children }) => {
         fetchSellerRecords,
         fetchAllRecordsForCharts,
         fetchRecords,
+        getRecordHistory,
 
         // Chart data and fetchers
         chartData,

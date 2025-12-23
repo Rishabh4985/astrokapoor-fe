@@ -81,7 +81,7 @@ const AddRecordForm = ({ onAdd }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value.trim() }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e) => {
@@ -490,7 +490,6 @@ const AddRecordForm = ({ onAdd }) => {
       "Vedic Yagya for Business Success Superior",
       "Wealth Enhancement Yagya",
       "Wedding Anniversary Yagya",
-      "Yagya for Career Development Promotion",
       "Yagya for Corporate Success or Solution",
       "Yagya for Domestic Problem Solutions",
       "Yagya for Fortunate Development of Children",
@@ -501,7 +500,6 @@ const AddRecordForm = ({ onAdd }) => {
       "Yagya for Peace of Mind",
       "Yagya for Career Development Promotion",
       "Yagya to find match for marriage",
-      "Court Cases Victory by Disputes Yagya",
       "Yagya Specially For You",
       "Yagya to Avoid Alcohol Drinks and Drug Addiction",
       "Yagya to Overcome from Fear and Anxiety",
@@ -532,7 +530,9 @@ const AddRecordForm = ({ onAdd }) => {
     if (key.toLowerCase().includes("email")) return "email";
     if (
       key.toLowerCase().includes("amount") ||
-      key.toLowerCase().includes("rating")
+      key.toLowerCase().includes("rating") ||
+      key.toLowerCase().includes("pending") ||
+      key.toLowerCase().includes("refund")
     )
       return "number";
     return "text";
@@ -638,17 +638,25 @@ const AddRecordForm = ({ onAdd }) => {
                       name={key}
                       value={formData[key]}
                       onChange={(e) => {
+                        const countryName = e.target.value;
+                        const countryObj = countries.find(
+                          (c) => c.name === countryName
+                        );
+                        const countryIsoCode = countryObj
+                          ? countryObj.isoCode
+                          : "";
+
                         setFormData((prev) => ({
                           ...prev,
-                          [key]: e.target.value,
+                          [key]: countryName,
                         }));
-                        setSelectedCountry(e.target.value);
+                        setSelectedCountry(countryIsoCode);
                       }}
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select Country</option>
                       {countries.map((c) => (
-                        <option key={c.isoCode} value={c.isoCode}>
+                        <option key={c.isoCode} value={c.name}>
                           {c.name}
                         </option>
                       ))}
@@ -702,9 +710,11 @@ const AddRecordForm = ({ onAdd }) => {
                       min={getInputType(key) === "number" ? "0" : undefined}
                       step={getInputType(key) === "number" ? "any" : undefined}
                       onKeyDown={(e) => {
+                        const isNumberField = getInputType(key) === "number";
                         if (
-                          getInputType(key) === "number" &&
-                          (e.key === "-" || e.key === "e")
+                          isNumberField &&
+                          e.key.length === 1 &&
+                          !/[0-9.]/.test(e.key)
                         ) {
                           e.preventDefault();
                         }
