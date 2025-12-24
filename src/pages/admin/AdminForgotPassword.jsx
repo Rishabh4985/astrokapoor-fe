@@ -18,7 +18,7 @@ const AdminForgotPassword = () => {
     setMessage("");
     setLoading(true);
     try {
-      const res = await axios.post(`${API_BASE}/send-otp`, { email });
+      const res = await axios.post(`${API_BASE}/admin/send-otp`, { email });
 
       setMessage(
         res.data.message || "OTP sent to your email. Please check your inbox."

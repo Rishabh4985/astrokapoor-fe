@@ -2,70 +2,19 @@ import React, { useState } from "react";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
 import { Country, State } from "country-state-city";
-
-const defaultFormData = {
-  dateOfPayment: "",
-  customerName: "",
-  amount: "",
-  pendingAmount: "",
-  refund: "",
-  status: "",
-  service: "",
-  mobile1: "",
-  mobile2: "",
-  email1: "",
-  email2: "",
-  expert: "",
-  handlerId: "",
-  handleBy: "",
-  mode: "",
-  country: "",
-  state: "",
-  transactionId: "",
-  sheet: "",
-  remark: "",
-  gems: "",
-  gems1: "",
-  gems2: "",
-  gems3: "",
-  gems4: "",
-  communication: "",
-  solutions: "",
-  solDetails: "",
-  overallRating: "",
-  remarks: "",
-  qualityDesc: "",
-  feedStatus: "",
-  additionalInfo: "",
-  feedbackComment: "",
-  address: "",
-  airBillNo: "",
-  productsName: "",
-  skuNo: "",
-  category: "",
-};
-
-const requiredFields = [
-  "dateOfPayment",
-  "customerName",
-  "amount",
-  "service",
-  "status",
-  "mobile1",
-  "email1",
-  "handleBy",
-  "transactionId",
-  "address",
-  "category",
-  "country",
-];
+import {
+  dropdownOptions,
+  requiredFields,
+  expectedHeaders,
+  headerLabels,
+} from "./Dropdown";
 
 const AddRecordForm = ({ onAdd }) => {
   const { authToken, userRole } = useAuth();
   const seller = JSON.parse(localStorage.getItem("currentSeller"));
   const isSeller = !!seller?.email;
   const [formData, setFormData] = useState({
-    ...defaultFormData,
+    ...expectedHeaders,
     handlerId: isSeller ? seller.email : "",
   });
   const [mode, setMode] = useState("new");
@@ -151,7 +100,7 @@ const AddRecordForm = ({ onAdd }) => {
       }
 
       setFormData({
-        ...defaultFormData,
+        ...expectedHeaders,
         handlerId: sellerEmail || "admin",
       });
       setMode("new");
@@ -249,282 +198,11 @@ const AddRecordForm = ({ onAdd }) => {
     toast.info("User data loaded. You can now add a new record.");
   };
 
-  const fieldLabelMap = {
-    dateOfPayment: "Date of Payment",
-    customerName: "Customer Name",
-    amount: "Amount",
-    pendingAmount: "Pending Amount",
-    refund: "Refund",
-    status: "Status",
-    service: "Service",
-    mobile1: "Mobile 1",
-    mobile2: "Mobile 2",
-    email1: "Email 1",
-    email2: "Email 2",
-    expert: "Expert",
-    handlerId: "Handler ID",
-    handleBy: "Handle By",
-    mode: "Mode",
-    country: "Country",
-    state: "State",
-    transactionId: "Transaction ID",
-    sheet: "Sheet",
-    remark: "Remark",
-    gems: "Gems",
-    gems1: "Gems 1",
-    gems2: "Gems 2",
-    gems3: "Gems 3",
-    gems4: "Gems 4",
-    communication: "Communication",
-    solutions: "Solutions",
-    solDetails: "Sol Details",
-    overallRating: "Overall Rating",
-    remarks: "Remarks",
-    qualityDesc: "Quality Desc",
-    feedStatus: "Feed Status",
-    additionalInfo: "Additional Info",
-    feedbackComment: "Feedback Comment",
-    address: "Address",
-    airBillNo: "Air Bill No.",
-    productsName: "Product Name",
-    skuNo: "SKU NO.",
-    category: "Category",
-  };
-
   const LabelWithAsterisk = ({ text }) => (
     <label className="text-sm text-gray-700 mb-1">
       {text} <span className="text-red-500">*</span>
     </label>
   );
-
-  const dropdownOptions = {
-    status: ["Paid", "Pending", "Refunded"],
-    service: [
-      // Marriage & Relationship
-      "Marital Problems Solutions",
-      "Remedial Astrology for Delay in Marriage",
-      "Spouse Search Name Report",
-      "Vedic Matchmaking",
-      "Vedic Matchmaking Package",
-      "Muhurata for Marriage",
-      "Tough Times and Remedial Astrology",
-      "When Solemnization of My Marriage",
-      "Compatibility Analysis",
-      "How Will Be My Married Life",
-      "Know your spouse from your Horoscope",
-
-      // Astrology Consultancy
-      "Astrology Consultancy",
-      "Handmade Horoscope-Kundli",
-      "Relocation Report",
-      "Palm Reading",
-      "Ten Years Astrological Predictions",
-      "Astro Consultation Single Question",
-      "Free Astrology Consultation",
-      "Remedies for Delayed Marriage",
-      "Astrological Remedies for Childless Couple",
-      "Instant Astro Question",
-      "Birth Time Rectification",
-      "Vedic Gemstone Recommendation",
-      "Prashna Kundli",
-      "Family Astrology",
-      "Five Years Astrological Predictions",
-      "Family Astrology AMC",
-      "One Year Business-Varshaphala",
-      "Property Vehicle Sale and Buy Analysis",
-
-      // Medical Astrology
-      "Pituitary Gland Disorder Cure in Medical Astrology",
-      "Hearing Loss Cure in Medical Astrology",
-      "Voice Loss Treatment in Medical Astrology",
-      "Cancer Treatment in Medical Astrology",
-      "Elephantiasis Treatment in Medical Astrology",
-      "Enlarged Prostrate Treatment in Medical Astrology",
-      "Fabry Disease Treatment In Medical Astrology",
-      "Huntington’s Chorea Treatment In Medical Astrology",
-      "Motor Neuron Cure in Medical Astrology",
-      "Nightfall Treatment in Medical Astrology",
-      "Polycystic Kidney Disease Treatment In Medical Astrology",
-      "Urticaria Treatment in Medical Astrology",
-      "Medical Astrology Consultation",
-      "Azoospermia Treatment in Medical Astrology",
-      "Premature Ejaculation Treatment in Medical Astrology",
-      "Female Infertility Treatment in Medical Astrology",
-      "Liver Cirrhosis Treatment in Medical Astrology",
-      "Obesity Treatment in Medical Astrology",
-      "Oligospermia Treatment in Medical Astrology",
-      "Sex Power Enhancement in Medical Astrology",
-      "PCOD Treatment in Medical Astrology",
-      "Acne Treatment in Medical Astrology",
-      "Alcoholism Treatment by Medical Astrology",
-      "Anemia Treatment in Medical Astrology",
-      "Arthritis Treatment in Medical Astrology",
-      "Kala Azar Cure in Medical Astrology",
-      "Low Sex Drive Cure in Medical Astrology",
-      "Premenstrual Syndrome cure in Medical Astrology",
-      "Whooping Cough Cure in Medical Astrology",
-      "Blood Pressure Treatment In Medical Astrology",
-      "Brain Tumor Treatment in Medical Astrology",
-      "Cataract Treatment in Medical Astrology",
-      "Chicken Gunya Treatment In Medical Astrology",
-      "Chicken Pox Treatment in Medical Astrology",
-      "Coma Treatment in Medical Astrology",
-      "Dengue Treatment In Medical Astrology",
-      "Depression Treatment in Medical Astrology",
-      "Diabetes Treatment in Medical Astrology",
-      "Epilepsy Treatment in Medical Astrology",
-      "Erectile Dysfunction Treatment in Medical Astrology",
-      "Fibroids Treatment in Medical Astrology",
-      "Fistula Treatment in Medical Astrology",
-      "Hair Fall Treatment in Medical Astrology",
-      "Impotence Treatment in Medical Astrology",
-      "Infertility solution for Couples",
-      "Insomnia Treatment in Medical Astrology",
-      "Itching Treatment In Medical Astrology",
-      "Libido Treatment in Medical Astrology",
-      "Medical Astrology Treatment of Bell’s Palsy",
-      "Medical Astrology Treatment of Glaucoma",
-      "Migraine Treatment in Medical Astrology",
-      "Multiple Sclerosis Treatment In Medical Astrology",
-      "Neuralgia Treatment in Medical Astrology",
-      "Osteoporosis Cure in Medical Astrology",
-      "Parkinson Treatment in Medical Astrology",
-      "Premature Menopause Treatment in Medical Astrology",
-      "Sciatica Treatment In Medical Astrology",
-      "Infants Disease Cure in Medical Astrology",
-      "Skin Disease Treatment In Medical Astrology",
-      "Yellow Fever Treatment In Medical Astrology",
-
-      // Yearly & Report Astrology
-      "2025 Horoscope Report",
-      "2025 Astrological Career and Finance Fortune Report",
-      "2025 Love Astrology Report | 2025 Marriage Astrology Report",
-      "Business Report",
-      "Career Astrology Report Online",
-      "Vedic Education Report Predictions",
-      "Finance Report Astrology",
-      "Family Astrology 2025",
-      "Love Compatibility Astrology Check",
-
-      // Bollywood & Celebrity
-      "Bollywood Astrology Consultation",
-      "Bollywood Numerology Report-Consultation",
-      "Bollywood Tarot Card Reading",
-      "Bollywood Tarot Reading – Specific Question",
-      "Bollywood Astrological Career Growth Report",
-      "Financial Stability in Bollywood",
-      "Graphological Analysis – Bollywood",
-
-      // Child & Education
-      "Child Career Report One Year",
-      "Career Astrology Foreign Settlement",
-      "Money and Career Astrology",
-      "Baby Name Selection",
-      "Birth Time Selection",
-      "Child Education",
-
-      // Business & Corporate
-      "Acquisition Report",
-      "Ask any corp. question",
-      "Business family report",
-      "Compatibility Analysis Report",
-      "Corporate Astrology",
-      "Corporate Muhurta Report",
-      "Business Name Numerology",
-      "Corporate vastu",
-      "Current business analysis",
-      "Diversification Analysis",
-      "Employee Scan",
-      "New Venture Analysis",
-      "Partnership Analysis",
-      "Powerful logo cards",
-      "Raising finance",
-      "Right Employee",
-      "Career Counselling and Guidance",
-      "Marriage and Family Counselling",
-      "Mental Health Counselling",
-      "Name Change By Numerology",
-      "Numerology Consultation",
-      "Rudraksha Therapy Consultation",
-
-      // Tarot, Vaastu, & Yagya
-      "Tarot Card Consultation",
-      "Vaastu Shastra Consultation",
-      "Auspicious Muhurat",
-      "Mundan Sanskar",
-      "Yagya for Quick Results",
-      "Court Cases Victory by Disputes Yagya",
-      "Black Magic Removal",
-      "Mahamritunjaya Tula Daan",
-      "Baglamukhi or Pitambara Yagya",
-      "Bhagavad Gita Yagya",
-      "Birthday Graha Shanti Yagya",
-      "Budh (Mercury) Yagya",
-      "Danger averting Yagya",
-      "Guru (Jupiter) Yagya",
-      "Health Betterment Yagya",
-      "Kaalsarpa Yoga Solutions",
-      "Kanak Dhara Yagya",
-      "Ketu Yagya",
-      "Maha Durga Yagya or Maha Shakti Pooja",
-      "Maha Ganapati Yagya",
-      "Maha Lakshmi Yagya",
-      "Maha Saraswati Yagya",
-      "Maha Vishnu Yagya",
-      "Mahamrityunjaya Yagya",
-      "Mangal Mars Yagya-Yagya for Manglik",
-      "Mool Shanti Pooja Vidhi or Mool Yagya",
-      "Navagraha Yagya",
-      "New born child Yagya",
-      "Other Divine Yagyas-Narsimha-Krishna-Rama-Hanuman-Vishwakarma-Yagya",
-      "Performance of Rites to Honor the Deceased Narayan Bali Yagya",
-      "Problem Eradication Yagya",
-      "Rahu Yagya",
-      "Rudrabhishek Yagya",
-      "Santan Gopal Yagya",
-      "Shani (Saturn) Yagya",
-      "Surya (Sun) Yagya",
-      "Shubharambha Inauguration Yagya",
-      "Shukra (Venus) Yagya",
-      "Vaastu Shanti Puja Vidhi or Vastu Yagya",
-      "Vedic Yagya for Business Success Superior",
-      "Wealth Enhancement Yagya",
-      "Wedding Anniversary Yagya",
-      "Yagya for Corporate Success or Solution",
-      "Yagya for Domestic Problem Solutions",
-      "Yagya for Fortunate Development of Children",
-      "Yagya for freedom from Bondage",
-      "Yagya for Good and Peaceful Sleep",
-      "Yagya For Happy Life",
-      "Yagya for Memory Improvement",
-      "Yagya for Peace of Mind",
-      "Yagya for Career Development Promotion",
-      "Yagya to find match for marriage",
-      "Yagya Specially For You",
-      "Yagya to Avoid Alcohol Drinks and Drug Addiction",
-      "Yagya to Overcome from Fear and Anxiety",
-      "Yagyas and Anushthan",
-      "Yagyas for safe Journey",
-      "Yagyas for Spiritual progress and Enlightenment",
-    ],
-    mode: [
-      "CCavenue",
-      "UPI",
-      "PayPal",
-      "Corporate Account",
-      "Pristdel",
-      "Cash In Hand",
-      "Cash to Saynoee",
-      "Bank Account",
-      "NEFT",
-      "Cash Deposit",
-      "Online",
-      "Cheque Deposit",
-    ],
-    category: ["Consultation", "Products", "Gemstones"],
-    overallRating: Array.from({ length: 10 }, (_, i) => i + 1),
-  };
-
   const getInputType = (key) => {
     if (key === "dateOfPayment") return "date";
     if (key.toLowerCase().includes("email")) return "email";
@@ -595,7 +273,7 @@ const AddRecordForm = ({ onAdd }) => {
               {Object.entries(existingUserData).map(([key, val]) => (
                 <p key={key}>
                   <span className="font-medium">
-                    {fieldLabelMap[key] || key}:
+                    {headerLabels[key] || key}:
                   </span>{" "}
                   {val}
                 </p>
@@ -619,7 +297,7 @@ const AddRecordForm = ({ onAdd }) => {
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-h-[70vh] overflow-y-auto pr-2">
-            {Object.entries(fieldLabelMap).map(([key, label]) => {
+            {Object.entries(headerLabels).map(([key, label]) => {
               if (isSeller && key === "handlerId") return null;
 
               return (

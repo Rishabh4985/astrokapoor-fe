@@ -17,257 +17,27 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Country, State } from "country-state-city";
+import {
+  dropdownOptions,
+  requiredFields,
+  expectedHeaders,
+  headerLabels,
+} from "../../components/shared/Dropdown.js";
 
-const requiredFields = [
-  "dateOfPayment",
-  "customerName",
-  "amount",
-  "service",
-  "status",
-  "mobile1",
-  "email1",
-  "handleBy",
-  "transactionId",
-  "address",
-  "category",
-  "country",
-];
-
-const countryOptions = Country.getAllCountries().map((c) => c.name);
-const stateOptions = State.getAllStates().map((s) => s.name);
-
-const statusOptions = ["Paid", "Pending", "Refunded"];
-const categoryOptions = ["Consultation", "Products", "Gemstones"];
-const serviceOptions = [
-  // Marriage & Relationship
-  "Marital Problems Solutions",
-  "Remedial Astrology for Delay in Marriage",
-  "Spouse Search Name Report",
-  "Vedic Matchmaking",
-  "Vedic Matchmaking Package",
-  "Muhurata for Marriage",
-  "Tough Times and Remedial Astrology",
-  "When Solemnization of My Marriage",
-  "Compatibility Analysis",
-  "How Will Be My Married Life",
-  "Know your spouse from your Horoscope",
-
-  // Astrology Consultancy
-  "Astrology Consultancy",
-  "Handmade Horoscope-Kundli",
-  "Relocation Report",
-  "Palm Reading",
-  "Ten Years Astrological Predictions",
-  "Astro Consultation Single Question",
-  "Free Astrology Consultation",
-  "Remedies for Delayed Marriage",
-  "Astrological Remedies for Childless Couple",
-  "Instant Astro Question",
-  "Birth Time Rectification",
-  "Vedic Gemstone Recommendation",
-  "Prashna Kundli",
-  "Family Astrology",
-  "Five Years Astrological Predictions",
-  "Family Astrology AMC",
-  "One Year Business-Varshaphala",
-  "Property Vehicle Sale and Buy Analysis",
-
-  // Medical Astrology
-  "Pituitary Gland Disorder Cure in Medical Astrology",
-  "Hearing Loss Cure in Medical Astrology",
-  "Voice Loss Treatment in Medical Astrology",
-  "Cancer Treatment in Medical Astrology",
-  "Elephantiasis Treatment in Medical Astrology",
-  "Enlarged Prostrate Treatment in Medical Astrology",
-  "Fabry Disease Treatment In Medical Astrology",
-  "Huntington’s Chorea Treatment In Medical Astrology",
-  "Motor Neuron Cure in Medical Astrology",
-  "Nightfall Treatment in Medical Astrology",
-  "Polycystic Kidney Disease Treatment In Medical Astrology",
-  "Urticaria Treatment in Medical Astrology",
-  "Medical Astrology Consultation",
-  "Azoospermia Treatment in Medical Astrology",
-  "Premature Ejaculation Treatment in Medical Astrology",
-  "Female Infertility Treatment in Medical Astrology",
-  "Liver Cirrhosis Treatment in Medical Astrology",
-  "Obesity Treatment in Medical Astrology",
-  "Oligospermia Treatment in Medical Astrology",
-  "Sex Power Enhancement in Medical Astrology",
-  "PCOD Treatment in Medical Astrology",
-  "Acne Treatment in Medical Astrology",
-  "Alcoholism Treatment by Medical Astrology",
-  "Anemia Treatment in Medical Astrology",
-  "Arthritis Treatment in Medical Astrology",
-  "Kala Azar Cure in Medical Astrology",
-  "Low Sex Drive Cure in Medical Astrology",
-  "Premenstrual Syndrome cure in Medical Astrology",
-  "Whooping Cough Cure in Medical Astrology",
-  "Blood Pressure Treatment In Medical Astrology",
-  "Brain Tumor Treatment in Medical Astrology",
-  "Cataract Treatment in Medical Astrology",
-  "Chicken Gunya Treatment In Medical Astrology",
-  "Chicken Pox Treatment in Medical Astrology",
-  "Coma Treatment in Medical Astrology",
-  "Dengue Treatment In Medical Astrology",
-  "Depression Treatment in Medical Astrology",
-  "Diabetes Treatment in Medical Astrology",
-  "Epilepsy Treatment in Medical Astrology",
-  "Erectile Dysfunction Treatment in Medical Astrology",
-  "Fibroids Treatment in Medical Astrology",
-  "Fistula Treatment in Medical Astrology",
-  "Hair Fall Treatment in Medical Astrology",
-  "Impotence Treatment in Medical Astrology",
-  "Infertility solution for Couples",
-  "Insomnia Treatment in Medical Astrology",
-  "Itching Treatment In Medical Astrology",
-  "Libido Treatment in Medical Astrology",
-  "Medical Astrology Treatment of Bell’s Palsy",
-  "Medical Astrology Treatment of Glaucoma",
-  "Migraine Treatment in Medical Astrology",
-  "Multiple Sclerosis Treatment In Medical Astrology",
-  "Neuralgia Treatment in Medical Astrology",
-  "Osteoporosis Cure in Medical Astrology",
-  "Parkinson Treatment in Medical Astrology",
-  "Premature Menopause Treatment in Medical Astrology",
-  "Sciatica Treatment In Medical Astrology",
-  "Infants Disease Cure in Medical Astrology",
-  "Skin Disease Treatment In Medical Astrology",
-  "Yellow Fever Treatment In Medical Astrology",
-
-  // Yearly & Report Astrology
-  "2025 Horoscope Report",
-  "2025 Astrological Career and Finance Fortune Report",
-  "2025 Love Astrology Report | 2025 Marriage Astrology Report",
-  "Business Report",
-  "Career Astrology Report Online",
-  "Vedic Education Report Predictions",
-  "Finance Report Astrology",
-  "Family Astrology 2025",
-  "Love Compatibility Astrology Check",
-
-  // Bollywood & Celebrity
-  "Bollywood Astrology Consultation",
-  "Bollywood Numerology Report-Consultation",
-  "Bollywood Tarot Card Reading",
-  "Bollywood Tarot Reading – Specific Question",
-  "Bollywood Astrological Career Growth Report",
-  "Financial Stability in Bollywood",
-  "Graphological Analysis – Bollywood",
-
-  // Child & Education
-  "Child Career Report One Year",
-  "Career Astrology Foreign Settlement",
-  "Money and Career Astrology",
-  "Baby Name Selection",
-  "Birth Time Selection",
-  "Child Education",
-
-  // Business & Corporate
-  "Acquisition Report",
-  "Ask any corp. question",
-  "Business family report",
-  "Compatibility Analysis Report",
-  "Corporate Astrology",
-  "Corporate Muhurta Report",
-  "Business Name Numerology",
-  "Corporate vastu",
-  "Current business analysis",
-  "Diversification Analysis",
-  "Employee Scan",
-  "New Venture Analysis",
-  "Partnership Analysis",
-  "Powerful logo cards",
-  "Raising finance",
-  "Right Employee",
-  "Career Counselling and Guidance",
-  "Marriage and Family Counselling",
-  "Mental Health Counselling",
-  "Name Change By Numerology",
-  "Numerology Consultation",
-  "Rudraksha Therapy Consultation",
-
-  // Tarot, Vaastu, & Yagya
-  "Tarot Card Consultation",
-  "Vaastu Shastra Consultation",
-  "Auspicious Muhurat",
-  "Mundan Sanskar",
-  "Yagya for Quick Results",
-  "Court Cases Victory by Disputes Yagya",
-  "Black Magic Removal",
-  "Mahamritunjaya Tula Daan",
-  "Baglamukhi or Pitambara Yagya",
-  "Bhagavad Gita Yagya",
-  "Birthday Graha Shanti Yagya",
-  "Budh (Mercury) Yagya",
-  "Danger averting Yagya",
-  "Guru (Jupiter) Yagya",
-  "Health Betterment Yagya",
-  "Kaalsarpa Yoga Solutions",
-  "Kanak Dhara Yagya",
-  "Ketu Yagya",
-  "Maha Durga Yagya or Maha Shakti Pooja",
-  "Maha Ganapati Yagya",
-  "Maha Lakshmi Yagya",
-  "Maha Saraswati Yagya",
-  "Maha Vishnu Yagya",
-  "Mahamrityunjaya Yagya",
-  "Mangal Mars Yagya-Yagya for Manglik",
-  "Mool Shanti Pooja Vidhi or Mool Yagya",
-  "Navagraha Yagya",
-  "New born child Yagya",
-  "Other Divine Yagyas-Narsimha-Krishna-Rama-Hanuman-Vishwakarma-Yagya",
-  "Performance of Rites to Honor the Deceased Narayan Bali Yagya",
-  "Problem Eradication Yagya",
-  "Rahu Yagya",
-  "Rudrabhishek Yagya",
-  "Santan Gopal Yagya",
-  "Shani (Saturn) Yagya",
-  "Surya (Sun) Yagya",
-  "Shubharambha Inauguration Yagya",
-  "Shukra (Venus) Yagya",
-  "Vaastu Shanti Puja Vidhi or Vastu Yagya",
-  "Vedic Yagya for Business Success Superior",
-  "Wealth Enhancement Yagya",
-  "Wedding Anniversary Yagya",
-  "Yagya for Career Development Promotion",
-  "Yagya for Corporate Success or Solution",
-  "Yagya for Domestic Problem Solutions",
-  "Yagya for Fortunate Development of Children",
-  "Yagya for freedom from Bondage",
-  "Yagya for Good and Peaceful Sleep",
-  "Yagya For Happy Life",
-  "Yagya for Memory Improvement",
-  "Yagya for Peace of Mind",
-  "Yagya to find match for marriage",
-  "Yagya Specially For You",
-  "Yagya to Avoid Alcohol Drinks and Drug Addiction",
-  "Yagya to Overcome from Fear and Anxiety",
-  "Yagyas and Anushthan",
-  "Yagyas for safe Journey",
-  "Yagyas for Spiritual progress and Enlightenment",
-
-  //New Categories
-  "Premium Astrology Consultation within 25 working days",
-  "Premium Astrology Consultation within 7 working days",
-  "Face to Face Consultation with Astrologer Prashant Kapoor(1hour)",
-  "Face to Face Consultation with Astrologer Prashant Kapoor(30 mins)",
-];
-const modeOptions = [
-  "CCavenue",
-  "UPI",
-  "PayPal",
-  "Corporate Account",
-  "Pristdel",
-  "Cash In Hand",
-  "Cash to Saynoee",
-  "Bank Account",
-  "NEFT",
-  "Cash Deposit",
-  "Online",
-  "Cheque Deposit",
-];
+const statusOptions = dropdownOptions.status;
+const categoryOptions = dropdownOptions.category;
+const serviceOptions = dropdownOptions.service;
+const modeOptions = dropdownOptions.mode;
 
 const SellerRecordList = ({ onFilter }) => {
+  const countryOptions = useMemo(
+    () => Country.getAllCountries().map((c) => c.name),
+    []
+  );
+  const stateOptions = useMemo(
+    () => State.getAllStates().map((s) => s.name),
+    []
+  );
   const { sellerRecords, updateSellerRecord, getRecordHistory } =
     useContext(SellerContext);
   const [query, setQuery] = useState("");
@@ -334,36 +104,6 @@ const SellerRecordList = ({ onFilter }) => {
 
   const nonEditableFields = ["transactionId", "dateOfPayment", "handlerId"];
 
-  const expectedHeaders = [
-    "dateOfPayment",
-    "customerName",
-    "amount",
-    "pendingAmount",
-    "refund",
-    "status",
-    "service",
-    "mobile1",
-    "mobile2",
-    "email1",
-    "email2",
-    "expert",
-    "handlerId",
-    "handleBy",
-    "mode",
-    "country",
-    "state",
-    "transactionId",
-    "sheet",
-    "remark",
-    "gems",
-    "gems1",
-    "gems2",
-    "gems3",
-    "gems4",
-    "address",
-    "skuNo",
-  ];
-
   const hiddenFields = [
     "communication",
     "solutions",
@@ -383,7 +123,7 @@ const SellerRecordList = ({ onFilter }) => {
   const dynamicHeaders = visibleRecords.reduce((set, record) => {
     Object.keys(record).forEach((key) => set.add(key));
     return set;
-  }, new Set(expectedHeaders));
+  }, new Set(Object.keys(expectedHeaders)));
 
   const headers = Array.from(dynamicHeaders).filter(
     (key) =>
@@ -393,37 +133,6 @@ const SellerRecordList = ({ onFilter }) => {
       key !== "_id" &&
       !hiddenFields.includes(key)
   );
-
-  const headerLabels = {
-    customerName: "Customer Name",
-    email1: "Email-1",
-    email2: "Email-2",
-    dateOfPayment: "Date of Payment",
-    amount: "Amount",
-    service: "Service",
-    status: "Status",
-    mobile1: "Mobile-1",
-    mobile2: "Mobile-2",
-    country: "Country",
-    state: "State",
-    transactionId: "Transaction ID",
-    pendingAmount: "Pending Amount",
-    refund: "Refund",
-    handlerId: "Handler ID",
-    handleBy: "Handled By",
-    mode: "Mode",
-    expert: "Expert",
-    sheet: "Sheet",
-    remark: "Remark",
-    gems: "Gems",
-    gems1: "Gem-1",
-    gems2: "Gem-2",
-    gems3: "Gem-3",
-    gems4: "Gem-4",
-    address: "Address",
-    skuNo: "SKU NO",
-    category: "Category",
-  };
 
   const validateRecord = (record) => {
     const errors = {};
@@ -627,7 +336,7 @@ const SellerRecordList = ({ onFilter }) => {
           </span>
         </h2>
         <div className="self-start sm:self-auto">
-          <Excel onExport={handleExport}/>
+          <Excel onExport={handleExport} />
         </div>
       </div>
 
@@ -766,9 +475,9 @@ const SellerRecordList = ({ onFilter }) => {
                 <th className="px-3 py-2 border text-xs font-semibold text-orange-900">
                   History
                 </th>
-                {headers.map((key,index) => (
+                {headers.map((key, index) => (
                   <th
-                    key={key ||`header-${index}`}
+                    key={key || `header-${index}`}
                     className="px-4 py-2 border font-medium text-center text-orange-900 whitespace-nowrap"
                   >
                     {headerLabels[key] || key}
@@ -820,7 +529,7 @@ const SellerRecordList = ({ onFilter }) => {
                             )}
                           </button>
                         </td>
-                        {headers.map((key,CellIndex) => {
+                        {headers.map((key, CellIndex) => {
                           const hasError = isEditing && validationErrors[key];
                           return (
                             <td

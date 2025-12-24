@@ -97,21 +97,21 @@ const AdminDashBoard = () => {
       </section>
 
       <div className="grid grid-cols-1 gap-4 sm:gap-6">
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
-            <div className="xl:col-span-1">
-              <MonthlySalesChart filter={filter} category={category} />
-            </div>
-            <div className="xl:col-span-1">
-              <SalesVsRefundChart filter={filter} category={category} />
-            </div>
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6">
+          <div className="xl:col-span-1">
+            <MonthlySalesChart filter={filter} category={category} />
           </div>
-
-          <div className="flex justify-center">
-            <div className="w-full max-w-md xl:max-w-lg">
-              <StatusChart filter={filter} category={category} />
-            </div>
+          <div className="xl:col-span-1">
+            <SalesVsRefundChart filter={filter} category={category} />
           </div>
         </div>
+
+        <div className="flex justify-center">
+          <div className="w-full max-w-md xl:max-w-lg">
+            <StatusChart filter={filter} category={category} />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

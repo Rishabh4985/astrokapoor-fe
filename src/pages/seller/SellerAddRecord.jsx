@@ -4,9 +4,7 @@ import { SellerContext } from "../../context/SellerContext";
 import {
   PlusCircle,
   UserPlus2,
-  FileText,
   ClipboardEdit,
-  FileInput,
 } from "lucide-react";
 
 const SellerAddRecord = () => {

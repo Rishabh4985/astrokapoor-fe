@@ -16,48 +16,10 @@ import {
   PackageCheck,
   X,
 } from "lucide-react";
-
-const expectedHeaders = [
-  "dateOfPayment",
-  "customerName",
-  "amount",
-  "pendingAmount",
-  "refund",
-  "status",
-  "service",
-  "mobile1",
-  "mobile2",
-  "email1",
-  "email2",
-  "expert",
-  "handlerId",
-  "handleBy",
-  "mode",
-  "country",
-  "state",
-  "transactionId",
-  "sheet",
-  "remark",
-  "gems",
-  "gems1",
-  "gems2",
-  "gems3",
-  "gems4",
-  "communication",
-  "solutions",
-  "solDetails",
-  "overallRating",
-  "remarks",
-  "qualityDesc",
-  "feedStatus",
-  "additionalInfo",
-  "feedbackComment",
-  "address",
-  "airBillNo",
-  "productsName",
-  "skuNo",
-  "category",
-];
+import {
+  expectedHeaders,
+  headerLabels,
+} from "../../components/shared/Dropdown.js";
 
 const SellerSalesLookup = ({ onFilter }) => {
   const { sellerRecords, importSellerRecords } = useContext(SellerContext);
@@ -70,28 +32,17 @@ const SellerSalesLookup = ({ onFilter }) => {
   const [category, setCategory] = useState("all");
   const itemsPerPage = 100;
 
-  // const getCurrentSellerEmail = useCallback(() => {
-  //   const seller = JSON.parse(localStorage.getItem("currentSeller"));
-  //   return seller?.email?.toLowerCase().trim();
-  // }, []);
-
-  // const sellerEmail = getCurrentSellerEmail();
-
   const flattenedRecords = useMemo(() => {
     if (!sellerRecords || !Array.isArray(sellerRecords)) return [];
 
     return sellerRecords;
-    // return sellerRecords.filter((record) => {
-    //   const handler = record.handlerId?.toLowerCase().trim();
-    //   return !handler || handler === sellerEmail;
-    // });
   }, [sellerRecords]);
 
   const dynamicHeaders = useMemo(() => {
     return flattenedRecords.reduce((set, record) => {
       Object.keys(record).forEach((key) => set.add(key));
       return set;
-    }, new Set(expectedHeaders));
+    }, new Set(Object.keys(expectedHeaders)));
   }, [flattenedRecords]);
 
   const headers = useMemo(() => {
@@ -99,48 +50,6 @@ const SellerSalesLookup = ({ onFilter }) => {
       (key) => key.trim() !== "" && key !== "serialno" && key !== "_id"
     );
   }, [dynamicHeaders]);
-
-  const headerLabels = {
-    customerName: "Customer Name",
-    email1: "Email-1",
-    email2: "Email-2",
-    dateOfPayment: "Date of Payment",
-    amount: "Amount",
-    service: "Service",
-    status: "Status",
-    mobile1: "Mobile-1",
-    mobile2: "Mobile-2",
-    country: "Country",
-    state: "State",
-    transactionId: "Transaction ID",
-    pendingAmount: "Pending Amount",
-    refund: "Refund",
-    handlerId: "Handler ID",
-    handleBy: "Handled By",
-    mode: "Mode",
-    expert: "Expert",
-    sheet: "Sheet",
-    remark: "Remark",
-    gems: "Gems",
-    gems1: "Gem-1",
-    gems2: "Gem-2",
-    gems3: "Gem-3",
-    gems4: "Gem-4",
-    communication: "Communication",
-    solutions: "Solutions",
-    solDetails: "Solution Details",
-    overallRating: "Overall Rating",
-    remarks: "Remark",
-    qualityDesc: "Quality Description",
-    feedStatus: "Feed Status",
-    additionalInfo: "Additional Info",
-    feedbackComment: "Feedback Comment",
-    address: "Address",
-    airBillNo: "Air Bill Number",
-    productsName: "Product Name",
-    skuNo: "SKU NO",
-    category: "Category",
-  };
 
   const formatValue = useCallback((key, value) => {
     if (value === null || value === undefined || value === "") return "-";

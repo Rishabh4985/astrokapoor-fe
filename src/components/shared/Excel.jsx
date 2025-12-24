@@ -14,8 +14,8 @@ const Excel = ({ onImport, onExport }) => {
   const showImport = !currentSeller || isAdmin;
 
   const headerMap = {
-    Date: "dateOfPayment",
-    "Client Name": "customerName",
+    "Date of Payment": "dateOfPayment",
+    "Customer Name": "customerName",
     Amount: "amount",
     "Pending Amount": "pendingAmount",
     Refund: "refund",
