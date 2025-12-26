@@ -22,6 +22,8 @@ import {
   requiredFields,
   expectedHeaders,
   headerLabels,
+  nonEditableFields,
+  hiddenFields,
 } from "../../components/shared/Dropdown.js";
 
 const statusOptions = dropdownOptions.status;
@@ -101,24 +103,6 @@ const SellerRecordList = ({ onFilter }) => {
   useEffect(() => {
     if (onFilter) onFilter(filteredRecords);
   }, [filteredRecords, onFilter]);
-
-  const nonEditableFields = ["transactionId", "dateOfPayment", "handlerId"];
-
-  const hiddenFields = [
-    "communication",
-    "solutions",
-    "solDetails",
-    "overallRating",
-    "remarks",
-    "qualityDesc",
-    "feedStatus",
-    "additionalInfo",
-    "feedbackComment",
-    "airBillNo",
-    "productsName",
-    "gems3",
-    "gems4",
-  ];
 
   const dynamicHeaders = visibleRecords.reduce((set, record) => {
     Object.keys(record).forEach((key) => set.add(key));

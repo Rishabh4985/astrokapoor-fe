@@ -8,110 +8,240 @@ import {
   expectedHeaders,
   headerLabels,
 } from "./Dropdown";
+import {
+  parsePhoneNumberFromString,
+  getCountryCallingCode,
+} from "libphonenumber-js";
+import disposableDomains from "disposable-email-domains";
+
+const validateEmailSyntax = (email) =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
+
+const validateEmail = (email) => {
+  if (!email) return true; // Optional field
+  if (!validateEmailSyntax(email)) return false;
+
+  const domain = email.split("@")[1]?.toLowerCase();
+  if (!domain || disposableDomains.includes(domain)) return false;
+
+  return true;
+};
+
+const validatePhone = (countryIso, number) => {
+  try {
+    if (!countryIso || !number) return true; // Optional
+    const callingCode = getCountryCallingCode(countryIso);
+    const phone = parsePhoneNumberFromString(`+${callingCode}${number}`);
+    return phone?.isValid() ?? false;
+  } catch (error) {
+    console.error("Phone validation error:", error);
+    return false;
+  }
+};
+
+const isValidCountry = (name) =>
+  Country.getAllCountries().some((c) => c.name === name);
+
+const isValidState = (countryIso, stateName) => {
+  if (!stateName) return true; // Optional
+  return State.getStatesOfCountry(countryIso).some((s) => s.name === stateName);
+};
+
+const validateName = (value) => value.trim().length >= 5;
+
+
+const getCountryCodeFromIso = (isoCode) => {
+  try {
+    if (!isoCode) return "";
+    return `+${getCountryCallingCode(isoCode)}`;
+  } catch (error) {
+    console.log(error);
+    return "";
+  }
+};
+
+const buildFullPhone = (countryIso, number) => {
+  if (!countryIso || !number) return "";
+  try {
+    const callingCode = getCountryCallingCode(countryIso);
+    return `+${callingCode}${number}`;
+  } catch {
+    return number;
+  }
+};
 
 const AddRecordForm = ({ onAdd }) => {
   const { authToken, userRole } = useAuth();
   const seller = JSON.parse(localStorage.getItem("currentSeller"));
   const isSeller = !!seller?.email;
+
   const [formData, setFormData] = useState({
     ...expectedHeaders,
     handlerId: isSeller ? seller.email : "",
+    countryIso: "", // Will be set when country is selected
   });
+
   const [mode, setMode] = useState("new");
   const [searchEmail, setSearchEmail] = useState("");
   const [existingUserData, setExistingUserData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
   const [selectedCountry, setSelectedCountry] = useState("");
+
   const countries = Country.getAllCountries();
   const states = selectedCountry
     ? State.getStatesOfCountry(selectedCountry)
     : [];
+
+  const currentCountryCode = getCountryCodeFromIso(formData.countryIso);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleCountryChange = (e) => {
+    const countryName = e.target.value;
+    const countryObj = countries.find((c) => c.name === countryName);
+    const isoCode = countryObj?.isoCode || "";
 
-    const isFormValid = requiredFields.every(
-      (field) => formData[field]?.toString().trim() !== ""
-    );
+    setFormData((prev) => ({
+      ...prev,
+      country: countryName,
+      countryIso: isoCode, // ✅ FIX: Set ISO code correctly
+      state: "", // Reset state when country changes
+    }));
 
-    if (!isFormValid) {
-      toast.error("Please fill in all required fields.");
+    setSelectedCountry(isoCode); // ✅ FIX: Update selected country
+  };
+
+ const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  const isFormValid = requiredFields.every(
+    (field) => formData[field]?.toString().trim() !== ""
+  );
+  if (!isFormValid) {
+    toast.error("Please fill up all the required fields");
+    return;
+  }
+
+  if (!validateName(formData.customerName)) {
+    toast.error("Invalid customer name (min 2 chars, letters only)");
+    return;
+  }
+
+  if (!isValidCountry(formData.country)) {
+    toast.error("Invalid Country Selected");
+    return;
+  }
+
+  if (formData.state && !isValidState(formData.countryIso, formData.state)) {
+    toast.error("Invalid state for selected country.");
+    return;
+  }
+
+  if (formData.email1 && !validateEmail(formData.email1)) {
+    toast.error("Invalid or disposable primary email.");
+    return;
+  }
+  if (formData.email2 && !validateEmail(formData.email2)) {
+    toast.error("Invalid or disposable secondary email.");
+    return;
+  }
+
+  if (formData.countryIso) {
+    if (
+      formData.mobile1 &&
+      !validatePhone(formData.countryIso, formData.mobile1)
+    ) {
+      toast.error("Invalid mobile number for selected country.");
       return;
     }
-    setIsSubmitting(true);
-    try {
-      const sellerEmail = seller?.email?.toLowerCase().trim();
-      const isSeller = !!seller?.email;
+    if (
+      formData.mobile2 &&
+      !validatePhone(formData.countryIso, formData.mobile2)
+    ) {
+      toast.error("Invalid alternate mobile number.");
+      return;
+    }
+  }
 
-      const newRecord = {
-        ...formData,
-        dateOfPayment: new Date(formData.dateOfPayment || Date.now()),
-        handlerId: isSeller ? seller.email : formData.handlerId || "admin",
+  // ✅ single source of truth – includes country code
+  const newRecord = {
+    ...formData,
+    mobile1: buildFullPhone(formData.countryIso, formData.mobile1),
+    mobile2: buildFullPhone(formData.countryIso, formData.mobile2),
+    dateOfPayment: formData.dateOfPayment
+      ? new Date(formData.dateOfPayment)
+      : new Date(),
+    handlerId: isSeller ? seller.email : formData.handlerId || "admin",
+  };
+
+  setIsSubmitting(true);
+  try {
+    await onAdd(newRecord);
+
+    toast.success(
+      mode === "edit"
+        ? "Record Updated Successfully!"
+        : "Record Added Successfully!"
+    );
+
+    if (mode === "new") {
+      const newUser = {
+        email1: formData.email1?.toLowerCase() || "",
+        email2: formData.email2?.toLowerCase() || "",
+        mobile1: newRecord.mobile1 || "", // ✅ save with code in session as well if you want
+        mobile2: newRecord.mobile2 || "",
+        customerName: formData.customerName,
+        country: formData.country,
+        state: formData.state || "",
+        address: formData.address || "",
+        handlerId: newRecord.handlerId,
       };
 
-      await onAdd(newRecord);
+      const existingUsers =
+        JSON.parse(sessionStorage.getItem("userList")) || [];
 
-      toast.success(
-        mode === "edit"
-          ? "Record Updated Successfully!"
-          : "Record Added Successfully!"
+      const isDuplicate = existingUsers.some((user) =>
+        (user.email1 && user.email1 === newUser.email1) ||
+        (user.email2 && user.email2 === newUser.email1) ||
+        (user.email1 && user.email1 === newUser.email2) ||
+        (user.email2 && user.email2 === newUser.email2) ||
+        (user.mobile1 && user.mobile1 === newUser.mobile1) ||
+        (user.mobile2 && user.mobile2 === newUser.mobile1) ||
+        (user.mobile1 && user.mobile1 === newUser.mobile2) ||
+        (user.mobile2 && user.mobile2 === newUser.mobile2)
       );
 
-      if (mode === "new") {
-        const newUser = {
-          email1: formData.email1?.toLowerCase(),
-          email2: formData.email2?.toLowerCase(),
-          mobile1: formData.mobile1,
-          mobile2: formData.mobile2,
-          customerName: formData.customerName,
-          country: formData.country,
-          state: formData.state,
-          address: formData.address,
-        };
-
-        const existingUsers =
-          JSON.parse(sessionStorage.getItem("userList")) || [];
-
-        const isDuplicate = existingUsers.some(
-          (user) =>
-            user.email1 === newUser.email1 ||
-            user.email2 === newUser.email1 ||
-            user.email1 === newUser.email2 ||
-            user.email2 === newUser.email2 ||
-            user.mobile1 === newUser.mobile1 ||
-            user.mobile2 === newUser.mobile1 ||
-            user.mobile1 === newUser.mobile2 ||
-            user.mobile2 === newUser.mobile2
+      if (!isDuplicate) {
+        sessionStorage.setItem(
+          "userList",
+          JSON.stringify([...existingUsers, newUser])
         );
-
-        if (!isDuplicate) {
-          sessionStorage.setItem(
-            "userList",
-            JSON.stringify([...existingUsers, newUser])
-          );
-          toast.info("User also saved in session storage.");
-        }
+        toast.info("User also saved in session storage.");
+      } else {
+        toast.warning("Similar user record already exists in session.");
       }
-
-      setFormData({
-        ...expectedHeaders,
-        handlerId: sellerEmail || "admin",
-      });
-      setMode("new");
-      setSearchEmail("");
-    } catch (error) {
-      console.error("Failed to add record", error);
-      toast.error("Failed to add record. Please try again.");
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+
+    setFormData({
+      ...expectedHeaders,
+      handlerId: isSeller ? seller.email : "",
+      countryIso: "",
+    });
+    setMode("new");
+    setSearchEmail("");
+    setSelectedCountry("");
+    setExistingUserData(null);
+  } catch (error) {
+    console.error("Failed to add record", error);
+    toast.error("Failed to add record. Please try again.");
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
 
   const handleUserSearch = async () => {
     if (!searchEmail.trim()) {
@@ -147,6 +277,10 @@ const AddRecordForm = ({ onAdd }) => {
 
       if (user) {
         setExistingUserData(user);
+
+        // ✅ FIX: Also set countryIso when loading user data
+        const userCountryObj = countries.find((c) => c.name === user.country);
+
         setFormData((prev) => ({
           ...prev,
           dateOfPayment: prev.dateOfPayment || "",
@@ -156,6 +290,7 @@ const AddRecordForm = ({ onAdd }) => {
           mobile1: user.mobile1 || "",
           mobile2: user.mobile2 || "",
           country: user.country || "",
+          countryIso: userCountryObj?.isoCode || "", // ✅ FIX: Set ISO code
           state: user.state || "",
           address: user.address || "",
           expert: user.expert || "",
@@ -167,6 +302,8 @@ const AddRecordForm = ({ onAdd }) => {
           pendingAmount: user.pendingAmount || "",
           refund: user.refund || "",
         }));
+
+        setSelectedCountry(userCountryObj?.isoCode || ""); // ✅ FIX: Update selected country
         toast.success("User found and data imported.");
       } else {
         setExistingUserData(null);
@@ -203,6 +340,7 @@ const AddRecordForm = ({ onAdd }) => {
       {text} <span className="text-red-500">*</span>
     </label>
   );
+
   const getInputType = (key) => {
     if (key === "dateOfPayment") return "date";
     if (key.toLowerCase().includes("email")) return "email";
@@ -221,7 +359,11 @@ const AddRecordForm = ({ onAdd }) => {
       <div className="flex justify-center gap-2 mb-6">
         <button
           type="button"
-          onClick={() => setMode("new")}
+          onClick={() => {
+            setMode("new");
+            setExistingUserData(null);
+            setSearchEmail("");
+          }}
           className={`px-5 py-2 rounded-lg transition-all duration-200 ${
             mode === "new"
               ? "bg-orange-600 text-white shadow"
@@ -275,7 +417,7 @@ const AddRecordForm = ({ onAdd }) => {
                   <span className="font-medium">
                     {headerLabels[key] || key}:
                   </span>{" "}
-                  {val}
+                  {val || "N/A"}
                 </p>
               ))}
               <button
@@ -300,6 +442,43 @@ const AddRecordForm = ({ onAdd }) => {
             {Object.entries(headerLabels).map(([key, label]) => {
               if (isSeller && key === "handlerId") return null;
 
+              if (key === "mobile1" || key === "mobile2") {
+                return (
+                  <div key={key} className="flex flex-col">
+                    {requiredFields.includes(key) ? (
+                      <LabelWithAsterisk text={label} />
+                    ) : (
+                      <label
+                        htmlFor={key}
+                        className="text-sm text-gray-700 mb-1"
+                      >
+                        {label}
+                      </label>
+                    )}
+                    {/* ✅ NEW: Country code prefix display */}
+                    <div className="flex gap-2">
+                      <div className="flex items-center justify-center bg-gray-100 px-3 py-2 rounded-lg border border-gray-300 min-w-fit font-semibold text-gray-700">
+                        {currentCountryCode || "No Country"}
+                      </div>
+                      <input
+                        id={key}
+                        name={key}
+                        value={formData[key]}
+                        onChange={handleChange}
+                        type="tel"
+                        placeholder="Mobile Number"
+                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                        onKeyDown={(e) => {
+                          if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div key={key} className="flex flex-col">
                   {requiredFields.includes(key) ? (
@@ -312,24 +491,10 @@ const AddRecordForm = ({ onAdd }) => {
 
                   {key === "country" ? (
                     <select
-                      id={key}
-                      name={key}
-                      value={formData[key]}
-                      onChange={(e) => {
-                        const countryName = e.target.value;
-                        const countryObj = countries.find(
-                          (c) => c.name === countryName
-                        );
-                        const countryIsoCode = countryObj
-                          ? countryObj.isoCode
-                          : "";
-
-                        setFormData((prev) => ({
-                          ...prev,
-                          [key]: countryName,
-                        }));
-                        setSelectedCountry(countryIsoCode);
-                      }}
+                      id="country"
+                      name="country"
+                      value={formData.country}
+                      onChange={handleCountryChange} // ✅ FIX: Use dedicated handler
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select Country</option>
@@ -344,12 +509,7 @@ const AddRecordForm = ({ onAdd }) => {
                       id={key}
                       name={key}
                       value={formData[key]}
-                      onChange={(e) =>
-                        setFormData((prev) => ({
-                          ...prev,
-                          [key]: e.target.value,
-                        }))
-                      }
+                      onChange={handleChange}
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select State</option>
