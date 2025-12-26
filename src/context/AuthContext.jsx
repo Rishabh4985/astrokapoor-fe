@@ -134,6 +134,9 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  const isAdmin = userRole === "admin";
+  const isSeller = userRole === "seller";
+
   return (
     <AuthContext.Provider
       value={{
@@ -144,6 +147,8 @@ export const AuthProvider = ({ children }) => {
         login,
         logout,
         isAuthenticated,
+        isSeller,
+        isAdmin,
       }}
     >
       {children}

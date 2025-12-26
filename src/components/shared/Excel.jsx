@@ -55,6 +55,8 @@ const Excel = ({ onImport, onExport }) => {
     Category: "category",
   };
 
+  const allowedFields = Object.values(headerMap);
+
   const normalizeService = (value) => {
     const val = (value || "").toString().trim().toLowerCase();
     if (val.includes("consultation")) return "Consultation";
@@ -234,9 +236,16 @@ const Excel = ({ onImport, onExport }) => {
           .filter((record) => record.category === category)
           .map((record) => {
             const mapped = {};
-            Object.entries(record).forEach(([key, value]) => {
-              const excelKey = reverseHeaderMap[key] || key;
-              mapped[excelKey] = value;
+            // Object.entries(record).forEach(([key, value]) => {
+            //   const excelKey = reverseHeaderMap[key] || key;
+            //   mapped[excelKey] = value;
+            // });
+
+            allowedFields.forEach((field) => {
+              if (record[field] !== undefined) {
+                const excelKey = reverseHeaderMap[field];
+                mapped[excelKey] = record[field];
+              }
             });
             return mapped;
           });
