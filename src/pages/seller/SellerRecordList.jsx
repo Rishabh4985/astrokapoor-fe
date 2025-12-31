@@ -59,6 +59,26 @@ const SellerRecordList = ({ onFilter }) => {
     expert: "",
     mode: "",
   });
+  const formatDateOnly = (value) => {
+    if (!value) return "-";
+
+    // ISO string (2025-12-01T00:00:00.000Z)
+    if (typeof value === "string" && value.includes("T")) {
+      return value.split("T")[0]; // → 2025-12-01
+    }
+
+    // Firestore timestamp
+    if (value?.seconds) {
+      return new Date(value.seconds * 1000).toISOString().split("T")[0];
+    }
+
+    // JS Date
+    if (value instanceof Date) {
+      return value.toISOString().split("T")[0];
+    }
+
+    return String(value);
+  };
 
   const currentSeller = JSON.parse(localStorage.getItem("currentSeller"));
   const sellerEmail = currentSeller?.email?.toLowerCase().trim();
@@ -182,11 +202,15 @@ const SellerRecordList = ({ onFilter }) => {
 
   const handleEdit = (record) => {
     setEditingId(record._id);
+    // Create safe record copy FIRST
+    const safeRecord = Object.fromEntries(
+      Object.entries(record).map(([k, v]) => [k, v ?? ""])
+    );
     setEditedRecord({
-      ...record,
+      ...safeRecord,
       category: record.category
         ? String(record.category).toLowerCase().trim()
-        : record.category,
+        : "",
     });
     setValidationErrors({});
   };
@@ -330,7 +354,7 @@ const SellerRecordList = ({ onFilter }) => {
           <input
             type="text"
             placeholder="Search across all records..."
-            value={query}
+            value={query || ""}
             onChange={(e) => setQuery(e.target.value)}
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           />
@@ -352,8 +376,11 @@ const SellerRecordList = ({ onFilter }) => {
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.status}</option>
-            {getUniqueValues("status").map((val) => (
-              <option key={val} value={val}>
+            {getUniqueValues("status").map((val, idx) => (
+              <option
+                key={`status-${String(val).toLowerCase().trim()}-${idx}`}
+                value={val}
+              >
                 {val}
               </option>
             ))}
@@ -370,8 +397,11 @@ const SellerRecordList = ({ onFilter }) => {
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.service}</option>
-            {getUniqueValues("service").map((val) => (
-              <option key={val} value={val}>
+            {getUniqueValues("service").map((val, idx) => (
+              <option
+                key={`service-${String(val).toLowerCase().trim()}-${idx}`}
+                value={val}
+              >
                 {val}
               </option>
             ))}
@@ -388,8 +418,11 @@ const SellerRecordList = ({ onFilter }) => {
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.country}</option>
-            {getUniqueValues("country").map((val) => (
-              <option key={val} value={val}>
+            {getUniqueValues("country").map((val, idx) => (
+              <option
+                key={`country-${String(val).toLowerCase().trim()}-${idx}`}
+                value={val}
+              >
                 {val}
               </option>
             ))}
@@ -406,8 +439,11 @@ const SellerRecordList = ({ onFilter }) => {
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.expert}</option>
-            {getUniqueValues("expert").map((val) => (
-              <option key={val} value={val}>
+            {getUniqueValues("expert").map((val, idx) => (
+              <option
+                key={`expert-${String(val).toLowerCase().trim()}-${idx}`}
+                value={val}
+              >
                 {val}
               </option>
             ))}
@@ -424,8 +460,11 @@ const SellerRecordList = ({ onFilter }) => {
             className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
           >
             <option value="">{headerLabels.mode}</option>
-            {getUniqueValues("mode").map((val) => (
-              <option key={val} value={val}>
+            {getUniqueValues("mode").map((val, idx) => (
+              <option
+                key={`mode-${String(val).toLowerCase().trim()}-${idx}`}
+                value={val}
+              >
                 {val}
               </option>
             ))}
@@ -527,9 +566,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   {key === "status" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -541,8 +581,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select Status</option>
-                                      {statusOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {statusOptions.map((option, idx) => (
+                                        <option
+                                          key={`status-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -550,9 +595,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   ) : key === "category" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -564,8 +610,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select Category</option>
-                                      {categoryOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {categoryOptions.map((option, idx) => (
+                                        <option
+                                          key={`category-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -573,9 +624,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   ) : key === "service" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -587,8 +639,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select Service</option>
-                                      {serviceOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {serviceOptions.map((option, idx) => (
+                                        <option
+                                          key={`service-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -596,9 +653,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   ) : key === "mode" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -610,8 +668,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select Mode</option>
-                                      {modeOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {modeOptions.map((option, idx) => (
+                                        <option
+                                          key={`mode-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -619,9 +682,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   ) : key === "country" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -633,8 +697,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select Country</option>
-                                      {countryOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {countryOptions.map((option, idx) => (
+                                        <option
+                                          key={`country-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -642,9 +711,10 @@ const SellerRecordList = ({ onFilter }) => {
                                   ) : key === "state" ? (
                                     <select
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -656,8 +726,13 @@ const SellerRecordList = ({ onFilter }) => {
                                       }`}
                                     >
                                       <option value="">Select State</option>
-                                      {stateOptions.map((option) => (
-                                        <option key={option} value={option}>
+                                      {stateOptions.map((option, idx) => (
+                                        <option
+                                          key={`state-${String(option)
+                                            .toLowerCase()
+                                            .trim()}-${idx}`}
+                                          value={option}
+                                        >
                                           {option}
                                         </option>
                                       ))}
@@ -666,9 +741,10 @@ const SellerRecordList = ({ onFilter }) => {
                                     <input
                                       type="text"
                                       value={
-                                        editedRecord[key] !== undefined
-                                          ? editedRecord[key]
-                                          : record[key] ?? ""
+                                        editedRecord[key] !== undefined &&
+                                        editedRecord[key] !== null
+                                          ? String(editedRecord[key] || "")
+                                          : String(record[key] || "")
                                       }
                                       onChange={(e) =>
                                         handleChange(key, e.target.value)
@@ -681,6 +757,11 @@ const SellerRecordList = ({ onFilter }) => {
                                     />
                                   )}
                                 </div>
+                              ) : key === "dateOfPayment" ? (
+                                formatValue(
+                                  "dateOfPayment",
+                                  record.dateOfPayment
+                                )
                               ) : (
                                 formatValue(key, record[key])
                               )}
@@ -716,80 +797,213 @@ const SellerRecordList = ({ onFilter }) => {
                       </tr>
 
                       {isHistoryExpanded && (
-                        <tr className="bg-blue-50 border-b">
-                          <td colSpan={headers.length + 2} className="p-4">
-                            {loadingHistory[record._id] ? (
-                              <div className="flex items-center gap-2 text-sm text-blue-600">
-                                <div className="animate-spin">⏳</div>
-                                Loading history...
-                              </div>
-                            ) : recordHistory[record._id]?.length > 0 ? (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2 font-semibold text-blue-700 mb-3">
-                                  <History className="w-4 h-4" />
-                                  Change History
+                        <>
+                          {loadingHistory[record._id] ? (
+                            <tr className="bg-blue-50 border-b">
+                              <td
+                                colSpan={headers.length + 2}
+                                className="p-4 text-center"
+                              >
+                                <div className="flex items-center gap-2 text-sm text-blue-600 justify-center">
+                                  <div className="animate-spin">⏳</div>
+                                  Loading history...
                                 </div>
-                                <div className="overflow-x-auto">
-                                  <table className="min-w-full text-xs bg-white rounded border border-blue-200">
-                                    <thead className="bg-blue-100">
-                                      <tr>
-                                        <th className="px-3 py-2 text-left border">
-                                          Field
-                                        </th>
-                                        <th className="px-3 py-2 text-left border">
-                                          Old Value
-                                        </th>
-                                        <th className="px-3 py-2 text-left border">
-                                          New Value
-                                        </th>
-                                        <th className="px-3 py-2 text-left border">
-                                          Changed By
-                                        </th>
-                                        <th className="px-3 py-2 text-left border">
-                                          Date & Time
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {recordHistory[record._id]?.map(
-                                        (entry, idx) => (
-                                          <tr
-                                            key={`${record._id}-${entry.field}-${entry.changedAt}-${idx}`}
-                                            className="border-b hover:bg-blue-50"
-                                          >
-                                            <td className="px-3 py-2 border font-medium text-blue-700">
-                                              {entry.fieldLabel || entry.field}
-                                            </td>
-                                            <td className="px-3 py-2 border text-red-600">
-                                              {entry.oldValue || "-"}
-                                            </td>
-                                            <td className="px-3 py-2 border text-green-600">
-                                              {entry.newValue || "-"}
-                                            </td>
-                                            <td className="px-3 py-2 border">
-                                              {entry.changedByName ||
-                                                entry.changedBy}
-                                            </td>
-                                            <td className="px-3 py-2 border text-gray-600">
-                                              {new Date(
-                                                entry.changedAt
-                                              ).toLocaleString()}
-                                            </td>
-                                          </tr>
-                                        )
-                                      )}
-                                    </tbody>
-                                  </table>
+                              </td>
+                            </tr>
+                          ) : recordHistory[record._id]?.length > 0 ? (
+                            recordHistory[record._id].map(
+                              (historyEntry, historyIdx) => {
+                                const rowColor =
+                                  historyIdx === 0
+                                    ? "bg-red-50 border-red-200"
+                                    : historyIdx === 1
+                                    ? "bg-orange-50 border-orange-200"
+                                    : "bg-yellow-50 border-yellow-200";
+                                // const rowLabel =
+                                //   historyIdx === 0
+                                //     ? "📈 LATEST"
+                                //     : historyIdx === 1
+                                //     ? "📉 PREV"
+                                //     : "📊 OLD";
+
+                                return (
+                                  <tr
+                                    key={`${record._id}-history-${historyEntry.changedAt}-${historyIdx}`}
+                                    className={`border-2 ${rowColor} hover:opacity-90 transition-all`}
+                                  >
+                                    <td className="px-3 py-2 border text-xs bg-orange-100 text-orange-900">
+                                      <div className="font-semibold">
+                                        {historyIdx === 0
+                                          ? "LATEST"
+                                          : historyIdx === 1
+                                          ? "PREV"
+                                          : "OLD"}
+                                      </div>
+                                      <div className="text-[11px] text-gray-700 mt-1">
+                                        {historyEntry.changedByName ||
+                                          historyEntry.changedBy}
+                                      </div>
+                                    </td>
+
+                                    <td colSpan={headers.length}>
+                                      <div className="flex flex-col gap-1 text-sm">
+                                        {/* Field label only when meaningful */}
+                                        {!Array.isArray(
+                                          historyEntry.oldValue
+                                        ) &&
+                                          historyEntry.field !==
+                                            "dateOfPayment" &&
+                                          historyEntry.fieldLabel && (
+                                            <div className="font-semibold text-orange-800">
+                                              {historyEntry.fieldLabel}
+                                            </div>
+                                          )}
+
+                                        {/* SINGLE FIELD CHANGE */}
+                                        {/* {!Array.isArray(
+                                          historyEntry.oldValue
+                                        ) && (
+                                          <div className="flex items-center gap-2">
+                                            <span className="text-red-500 line-through">
+                                              {formatDateOnly(
+                                                historyEntry.oldValue
+                                              )}
+                                            </span>
+                                            <span className="text-gray-400">
+                                              →
+                                            </span>
+                                            <span className="text-green-700 font-semibold">
+                                              {formatDateOnly(
+                                                historyEntry.newValue
+                                              )}
+                                            </span>
+                                          </div>
+                                        )} */}
+
+                                        {/* MULTI FIELD CHANGE */}
+                                        {/* {Array.isArray(
+                                          historyEntry.oldValue
+                                        ) && (
+                                          <ul className="mt-1 space-y-1 text-sm">
+                                            {historyEntry.oldValue.map(
+                                              (change, idx) => (
+                                                <li
+                                                  key={idx}
+                                                  className="flex items-center gap-2"
+                                                >
+                                                  <span className="text-orange-700 font-medium">
+                                                    {change.fieldLabel ||
+                                                      change.field}
+                                                  </span>
+                                                  <span className="text-red-500 line-through">
+                                                    {formatDateOnly(
+                                                      change.oldValue
+                                                    )}
+                                                  </span>
+                                                  <span className="text-gray-400">
+                                                    →
+                                                  </span>
+                                                  <span className="text-green-700 font-semibold">
+                                                    {formatDateOnly(
+                                                      change.newValue
+                                                    )}
+                                                  </span>
+                                                </li>
+                                              )
+                                            )}
+                                          </ul>
+                                        )} */}
+                                        {historyEntry.changes &&
+                                        historyEntry.changes.length > 0 ? (
+                                          <ul className="mt-1 space-y-1 text-sm">
+                                            {historyEntry.changes.map(
+                                              (change, idx) => (
+                                                <li
+                                                  key={idx}
+                                                  className="flex items-center gap-2"
+                                                >
+                                                  <span className="text-orange-700 font-medium">
+                                                    {change.fieldLabel ||
+                                                      change.field}
+                                                  </span>
+                                                  <span className="text-red-500 line-through">
+                                                    {formatDateOnly(
+                                                      change.oldValue
+                                                    )}
+                                                  </span>
+                                                  <span className="text-gray-400">
+                                                    →
+                                                  </span>
+                                                  <span className="text-green-700 font-semibold">
+                                                    {formatDateOnly(
+                                                      change.newValue
+                                                    )}
+                                                  </span>
+                                                </li>
+                                              )
+                                            )}
+                                          </ul>
+                                        ) : (
+                                          <div className="text-gray-500 text-xs">
+                                            No changes recorded.
+                                          </div>
+                                        )}
+
+                                        <div className="text-xs text-gray-600">
+                                          Changed by{" "}
+                                          <span className="font-medium text-gray-800">
+                                            {historyEntry.changedByName ||
+                                              historyEntry.changedBy}
+                                          </span>{" "}
+                                          on{" "}
+                                          {new Date(
+                                            historyEntry.changedAt
+                                          ).toLocaleString("en-IN", {
+                                            year: "numeric",
+                                            month: "2-digit",
+                                            day: "2-digit",
+                                            hour: "2-digit",
+                                            minute: "2-digit",
+                                          })}
+                                        </div>
+                                      </div>
+                                    </td>
+
+                                    <td
+                                      className="px-3 py-2 border font-bold text-xs text-white bg-gradient-to-r ${
+              historyIdx === 0 ? 'from-red-500 to-red-600' :
+              historyIdx === 1 ? 'from-orange-500 to-orange-600' :
+              'from-yellow-500 to-yellow-600'
+            }"
+                                    >
+                                      {new Date(
+                                        historyEntry.changedAt
+                                      ).toLocaleString("en-IN", {
+                                        year: "numeric",
+                                        month: "2-digit",
+                                        day: "2-digit",
+                                        hour: "2-digit",
+                                        minute: "2-digit",
+                                      })}
+                                    </td>
+                                  </tr>
+                                );
+                              }
+                            )
+                          ) : (
+                            <tr className="bg-gray-50 border-b">
+                              <td
+                                colSpan={headers.length + 2}
+                                className="p-4 text-center"
+                              >
+                                <div className="flex items-center gap-2 text-sm text-gray-600 justify-center">
+                                  <AlertCircle className="w-4 h-4" />
+                                  No changes recorded for this record yet.
                                 </div>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
-                                <AlertCircle className="w-4 h-4" />
-                                No changes recorded for this record yet.
-                              </div>
-                            )}
-                          </td>
-                        </tr>
+                              </td>
+                            </tr>
+                          )}
+                        </>
                       )}
 
                       {/* UPDATED: Show validation errors below row */}
