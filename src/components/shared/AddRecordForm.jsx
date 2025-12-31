@@ -49,7 +49,6 @@ const isValidState = (countryIso, stateName) => {
 
 const validateName = (value) => value.trim().length >= 5;
 
-
 const getCountryCodeFromIso = (isoCode) => {
   try {
     if (!isoCode) return "";
@@ -92,7 +91,7 @@ const AddRecordForm = ({ onAdd }) => {
     ? State.getStatesOfCountry(selectedCountry)
     : [];
 
-  const currentCountryCode = getCountryCodeFromIso(formData.countryIso);
+  // const currentCountryCode = getCountryCodeFromIso(formData.countryIso);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -114,134 +113,134 @@ const AddRecordForm = ({ onAdd }) => {
     setSelectedCountry(isoCode); // ✅ FIX: Update selected country
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
 
-  const isFormValid = requiredFields.every(
-    (field) => formData[field]?.toString().trim() !== ""
-  );
-  if (!isFormValid) {
-    toast.error("Please fill up all the required fields");
-    return;
-  }
-
-  if (!validateName(formData.customerName)) {
-    toast.error("Invalid customer name (min 2 chars, letters only)");
-    return;
-  }
-
-  if (!isValidCountry(formData.country)) {
-    toast.error("Invalid Country Selected");
-    return;
-  }
-
-  if (formData.state && !isValidState(formData.countryIso, formData.state)) {
-    toast.error("Invalid state for selected country.");
-    return;
-  }
-
-  if (formData.email1 && !validateEmail(formData.email1)) {
-    toast.error("Invalid or disposable primary email.");
-    return;
-  }
-  if (formData.email2 && !validateEmail(formData.email2)) {
-    toast.error("Invalid or disposable secondary email.");
-    return;
-  }
-
-  if (formData.countryIso) {
-    if (
-      formData.mobile1 &&
-      !validatePhone(formData.countryIso, formData.mobile1)
-    ) {
-      toast.error("Invalid mobile number for selected country.");
-      return;
-    }
-    if (
-      formData.mobile2 &&
-      !validatePhone(formData.countryIso, formData.mobile2)
-    ) {
-      toast.error("Invalid alternate mobile number.");
-      return;
-    }
-  }
-
-  // ✅ single source of truth – includes country code
-  const newRecord = {
-    ...formData,
-    mobile1: buildFullPhone(formData.countryIso, formData.mobile1),
-    mobile2: buildFullPhone(formData.countryIso, formData.mobile2),
-    dateOfPayment: formData.dateOfPayment
-      ? new Date(formData.dateOfPayment)
-      : new Date(),
-    handlerId: isSeller ? seller.email : formData.handlerId || "admin",
-  };
-
-  setIsSubmitting(true);
-  try {
-    await onAdd(newRecord);
-
-    toast.success(
-      mode === "edit"
-        ? "Record Updated Successfully!"
-        : "Record Added Successfully!"
+    const isFormValid = requiredFields.every(
+      (field) => formData[field]?.toString().trim() !== ""
     );
+    if (!isFormValid) {
+      toast.error("Please fill up all the required fields");
+      return;
+    }
 
-    if (mode === "new") {
-      const newUser = {
-        email1: formData.email1?.toLowerCase() || "",
-        email2: formData.email2?.toLowerCase() || "",
-        mobile1: newRecord.mobile1 || "", // ✅ save with code in session as well if you want
-        mobile2: newRecord.mobile2 || "",
-        customerName: formData.customerName,
-        country: formData.country,
-        state: formData.state || "",
-        address: formData.address || "",
-        handlerId: newRecord.handlerId,
-      };
+    if (!validateName(formData.customerName)) {
+      toast.error("Invalid customer name (min 2 chars, letters only)");
+      return;
+    }
 
-      const existingUsers =
-        JSON.parse(sessionStorage.getItem("userList")) || [];
+    if (!isValidCountry(formData.country)) {
+      toast.error("Invalid Country Selected");
+      return;
+    }
 
-      const isDuplicate = existingUsers.some((user) =>
-        (user.email1 && user.email1 === newUser.email1) ||
-        (user.email2 && user.email2 === newUser.email1) ||
-        (user.email1 && user.email1 === newUser.email2) ||
-        (user.email2 && user.email2 === newUser.email2) ||
-        (user.mobile1 && user.mobile1 === newUser.mobile1) ||
-        (user.mobile2 && user.mobile2 === newUser.mobile1) ||
-        (user.mobile1 && user.mobile1 === newUser.mobile2) ||
-        (user.mobile2 && user.mobile2 === newUser.mobile2)
-      );
+    if (formData.state && !isValidState(formData.countryIso, formData.state)) {
+      toast.error("Invalid state for selected country.");
+      return;
+    }
 
-      if (!isDuplicate) {
-        sessionStorage.setItem(
-          "userList",
-          JSON.stringify([...existingUsers, newUser])
-        );
-        toast.info("User also saved in session storage.");
-      } else {
-        toast.warning("Similar user record already exists in session.");
+    if (formData.email1 && !validateEmail(formData.email1)) {
+      toast.error("Invalid or disposable primary email.");
+      return;
+    }
+    if (formData.email2 && !validateEmail(formData.email2)) {
+      toast.error("Invalid or disposable secondary email.");
+      return;
+    }
+
+    if (formData.countryIso) {
+      if (
+        formData.mobile1 &&
+        !validatePhone(formData.countryIso, formData.mobile1)
+      ) {
+        toast.error("Invalid mobile number for selected country.");
+        return;
+      }
+      if (
+        formData.mobile2 &&
+        !validatePhone(formData.countryIso, formData.mobile2)
+      ) {
+        toast.error("Invalid alternate mobile number.");
+        return;
       }
     }
 
-    setFormData({
-      ...expectedHeaders,
-      handlerId: isSeller ? seller.email : "",
-      countryIso: "",
-    });
-    setMode("new");
-    setSearchEmail("");
-    setSelectedCountry("");
-    setExistingUserData(null);
-  } catch (error) {
-    console.error("Failed to add record", error);
-    toast.error("Failed to add record. Please try again.");
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+    // ✅ single source of truth – includes country code
+    const newRecord = {
+      ...formData,
+      mobile1: buildFullPhone(formData.countryIso, formData.mobile1),
+      mobile2: buildFullPhone(formData.countryIso, formData.mobile2),
+      dateOfPayment: formData.dateOfPayment
+        ? new Date(formData.dateOfPayment)
+        : new Date(),
+      handlerId: isSeller ? seller.email : formData.handlerId || "admin",
+    };
 
+    setIsSubmitting(true);
+    try {
+      await onAdd(newRecord);
+
+      toast.success(
+        mode === "edit"
+          ? "Record Updated Successfully!"
+          : "Record Added Successfully!"
+      );
+
+      if (mode === "new") {
+        const newUser = {
+          email1: formData.email1?.toLowerCase() || "",
+          email2: formData.email2?.toLowerCase() || "",
+          mobile1: newRecord.mobile1 || "", // ✅ save with code in session as well if you want
+          mobile2: newRecord.mobile2 || "",
+          customerName: formData.customerName,
+          country: formData.country,
+          state: formData.state || "",
+          address: formData.address || "",
+          handlerId: newRecord.handlerId,
+        };
+
+        const existingUsers =
+          JSON.parse(sessionStorage.getItem("userList")) || [];
+
+        const isDuplicate = existingUsers.some(
+          (user) =>
+            (user.email1 && user.email1 === newUser.email1) ||
+            (user.email2 && user.email2 === newUser.email1) ||
+            (user.email1 && user.email1 === newUser.email2) ||
+            (user.email2 && user.email2 === newUser.email2) ||
+            (user.mobile1 && user.mobile1 === newUser.mobile1) ||
+            (user.mobile2 && user.mobile2 === newUser.mobile1) ||
+            (user.mobile1 && user.mobile1 === newUser.mobile2) ||
+            (user.mobile2 && user.mobile2 === newUser.mobile2)
+        );
+
+        if (!isDuplicate) {
+          sessionStorage.setItem(
+            "userList",
+            JSON.stringify([...existingUsers, newUser])
+          );
+          toast.info("User also saved in session storage.");
+        } else {
+          toast.warning("Similar user record already exists in session.");
+        }
+      }
+
+      setFormData({
+        ...expectedHeaders,
+        handlerId: isSeller ? seller.email : "",
+        countryIso: "",
+      });
+      setMode("new");
+      setSearchEmail("");
+      setSelectedCountry("");
+      setExistingUserData(null);
+    } catch (error) {
+      console.error("Failed to add record", error);
+      toast.error("Failed to add record. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const handleUserSearch = async () => {
     if (!searchEmail.trim()) {
@@ -354,6 +353,8 @@ const AddRecordForm = ({ onAdd }) => {
     return "text";
   };
 
+  const isCountrySelected = !!formData.countryIso;
+
   return (
     <div className="mt-8 px-4">
       <div className="flex justify-center gap-2 mb-6">
@@ -445,29 +446,45 @@ const AddRecordForm = ({ onAdd }) => {
               if (key === "mobile1" || key === "mobile2") {
                 return (
                   <div key={key} className="flex flex-col">
-                    {requiredFields.includes(key) ? (
-                      <LabelWithAsterisk text={label} />
-                    ) : (
-                      <label
-                        htmlFor={key}
-                        className="text-sm text-gray-700 mb-1"
+                    <div className="flex items-center gap-2 mb-1">
+                      {requiredFields.includes(key) ? (
+                        <LabelWithAsterisk text={label} />
+                      ) : (
+                        <label className="text-sm text-gray-700">{label}</label>
+                      )}
+
+                      {!isCountrySelected && (
+                        <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
+                          Select country first
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex w-full rounded-lg border border-gray-300 overflow-hidden">
+                      {/* Country selector */}
+                      <select
+                        value={formData.country}
+                        onChange={handleCountryChange}
+                        className="bg-gray-100 text-sm px-1 outline-none border-r border-gray-300 max-w-[120px]"
                       >
-                        {label}
-                      </label>
-                    )}
-                    {/* ✅ NEW: Country code prefix display */}
-                    <div className="flex gap-2">
-                      <div className="flex items-center justify-center bg-gray-100 px-3 py-2 rounded-lg border border-gray-300 min-w-fit font-semibold text-gray-700">
-                        {currentCountryCode || "No Country"}
-                      </div>
+                        <option value="">Country</option>
+                        {countries.map((c) => (
+                          <option key={c.isoCode} value={c.name}>
+                            {c.isoCode} {getCountryCodeFromIso(c.isoCode)}
+                          </option>
+                        ))}
+                      </select>
+
+                      {/* Mobile input */}
                       <input
                         id={key}
                         name={key}
                         value={formData[key]}
                         onChange={handleChange}
                         type="tel"
-                        placeholder="Mobile Number"
-                        className="flex-1 border border-gray-300 rounded-lg px-3 py-2"
+                        placeholder="Mobile number"
+                        disabled={!isCountrySelected}
+                        className="flex-1 px-3 py-2 text-sm outline-none"
                         onKeyDown={(e) => {
                           if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
                             e.preventDefault();
