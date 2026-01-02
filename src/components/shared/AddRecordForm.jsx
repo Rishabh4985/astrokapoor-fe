@@ -18,7 +18,7 @@ const validateEmailSyntax = (email) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
 
 const validateEmail = (email) => {
-  if (!email) return true; // Optional field
+  if (!email) return true;
   if (!validateEmailSyntax(email)) return false;
 
   const domain = email.split("@")[1]?.toLowerCase();
@@ -29,7 +29,7 @@ const validateEmail = (email) => {
 
 const validatePhone = (countryIso, number) => {
   try {
-    if (!countryIso || !number) return true; // Optional
+    if (!countryIso || !number) return true;
     const callingCode = getCountryCallingCode(countryIso);
     const phone = parsePhoneNumberFromString(`+${callingCode}${number}`);
     return phone?.isValid() ?? false;
@@ -43,7 +43,7 @@ const isValidCountry = (name) =>
   Country.getAllCountries().some((c) => c.name === name);
 
 const isValidState = (countryIso, stateName) => {
-  if (!stateName) return true; // Optional
+  if (!stateName) return true;
   return State.getStatesOfCountry(countryIso).some((s) => s.name === stateName);
 };
 
@@ -77,7 +77,7 @@ const AddRecordForm = ({ onAdd }) => {
   const [formData, setFormData] = useState({
     ...expectedHeaders,
     handlerId: isSeller ? seller.email : "",
-    countryIso: "", // Will be set when country is selected
+    countryIso: "",
   });
 
   const [mode, setMode] = useState("new");
@@ -90,8 +90,6 @@ const AddRecordForm = ({ onAdd }) => {
   const states = selectedCountry
     ? State.getStatesOfCountry(selectedCountry)
     : [];
-
-  // const currentCountryCode = getCountryCodeFromIso(formData.countryIso);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -106,11 +104,11 @@ const AddRecordForm = ({ onAdd }) => {
     setFormData((prev) => ({
       ...prev,
       country: countryName,
-      countryIso: isoCode, // ✅ FIX: Set ISO code correctly
-      state: "", // Reset state when country changes
+      countryIso: isoCode,
+      state: "",
     }));
 
-    setSelectedCountry(isoCode); // ✅ FIX: Update selected country
+    setSelectedCountry(isoCode);
   };
 
   const handleSubmit = async (e) => {
@@ -165,7 +163,6 @@ const AddRecordForm = ({ onAdd }) => {
       }
     }
 
-    // ✅ single source of truth – includes country code
     const newRecord = {
       ...formData,
       mobile1: buildFullPhone(formData.countryIso, formData.mobile1),
@@ -190,7 +187,7 @@ const AddRecordForm = ({ onAdd }) => {
         const newUser = {
           email1: formData.email1?.toLowerCase() || "",
           email2: formData.email2?.toLowerCase() || "",
-          mobile1: newRecord.mobile1 || "", // ✅ save with code in session as well if you want
+          mobile1: newRecord.mobile1 || "",
           mobile2: newRecord.mobile2 || "",
           customerName: formData.customerName,
           country: formData.country,
@@ -277,7 +274,6 @@ const AddRecordForm = ({ onAdd }) => {
       if (user) {
         setExistingUserData(user);
 
-        // ✅ FIX: Also set countryIso when loading user data
         const userCountryObj = countries.find((c) => c.name === user.country);
 
         setFormData((prev) => ({
@@ -289,7 +285,7 @@ const AddRecordForm = ({ onAdd }) => {
           mobile1: user.mobile1 || "",
           mobile2: user.mobile2 || "",
           country: user.country || "",
-          countryIso: userCountryObj?.isoCode || "", // ✅ FIX: Set ISO code
+          countryIso: userCountryObj?.isoCode || "",
           state: user.state || "",
           address: user.address || "",
           expert: user.expert || "",
@@ -302,7 +298,7 @@ const AddRecordForm = ({ onAdd }) => {
           refund: user.refund || "",
         }));
 
-        setSelectedCountry(userCountryObj?.isoCode || ""); // ✅ FIX: Update selected country
+        setSelectedCountry(userCountryObj?.isoCode || "");
         toast.success("User found and data imported.");
       } else {
         setExistingUserData(null);
@@ -485,11 +481,6 @@ const AddRecordForm = ({ onAdd }) => {
                         placeholder="Mobile number"
                         disabled={!isCountrySelected}
                         className="flex-1 px-3 py-2 text-sm outline-none"
-                        onKeyDown={(e) => {
-                          if (e.key.length === 1 && !/[0-9]/.test(e.key)) {
-                            e.preventDefault();
-                          }
-                        }}
                       />
                     </div>
                   </div>
@@ -511,7 +502,7 @@ const AddRecordForm = ({ onAdd }) => {
                       id="country"
                       name="country"
                       value={formData.country}
-                      onChange={handleCountryChange} // ✅ FIX: Use dedicated handler
+                      onChange={handleCountryChange}
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select Country</option>
@@ -564,16 +555,6 @@ const AddRecordForm = ({ onAdd }) => {
                       type={getInputType(key)}
                       min={getInputType(key) === "number" ? "0" : undefined}
                       step={getInputType(key) === "number" ? "any" : undefined}
-                      onKeyDown={(e) => {
-                        const isNumberField = getInputType(key) === "number";
-                        if (
-                          isNumberField &&
-                          e.key.length === 1 &&
-                          !/[0-9.]/.test(e.key)
-                        ) {
-                          e.preventDefault();
-                        }
-                      }}
                       className="border border-gray-300 rounded-lg px-3 py-2"
                       placeholder={label}
                     />

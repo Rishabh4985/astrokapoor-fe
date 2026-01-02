@@ -9,7 +9,10 @@ import { AdminContext } from "../../context/AdminContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
 import { Search, Calendar, Filter, Table2, Sparkles, Tags } from "lucide-react";
-import { expectedHeaders,headerLabels } from "../../components/shared/Dropdown";
+import {
+  expectedHeaders,
+  headerLabels,
+} from "../../components/shared/Dropdown";
 
 const AdminSalesLookup = ({ onFilter }) => {
   const {

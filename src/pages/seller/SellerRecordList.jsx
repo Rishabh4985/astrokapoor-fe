@@ -255,7 +255,6 @@ const SellerRecordList = ({ onFilter }) => {
       .toLowerCase()
       .trim();
 
-    // Non-consultation → block if owned by other seller
     if (cat !== "consultation") {
       if (handler && handler !== sellerEmail) {
         toast.error("You can only edit your own records.");
@@ -819,12 +818,6 @@ const SellerRecordList = ({ onFilter }) => {
                                     : historyIdx === 1
                                     ? "bg-orange-50 border-orange-200"
                                     : "bg-yellow-50 border-yellow-200";
-                                // const rowLabel =
-                                //   historyIdx === 0
-                                //     ? "📈 LATEST"
-                                //     : historyIdx === 1
-                                //     ? "📉 PREV"
-                                //     : "📊 OLD";
 
                                 return (
                                   <tr
@@ -847,7 +840,6 @@ const SellerRecordList = ({ onFilter }) => {
 
                                     <td colSpan={headers.length}>
                                       <div className="flex flex-col gap-1 text-sm">
-                                        {/* Field label only when meaningful */}
                                         {!Array.isArray(
                                           historyEntry.oldValue
                                         ) &&
@@ -858,61 +850,6 @@ const SellerRecordList = ({ onFilter }) => {
                                               {historyEntry.fieldLabel}
                                             </div>
                                           )}
-
-                                        {/* SINGLE FIELD CHANGE */}
-                                        {/* {!Array.isArray(
-                                          historyEntry.oldValue
-                                        ) && (
-                                          <div className="flex items-center gap-2">
-                                            <span className="text-red-500 line-through">
-                                              {formatDateOnly(
-                                                historyEntry.oldValue
-                                              )}
-                                            </span>
-                                            <span className="text-gray-400">
-                                              →
-                                            </span>
-                                            <span className="text-green-700 font-semibold">
-                                              {formatDateOnly(
-                                                historyEntry.newValue
-                                              )}
-                                            </span>
-                                          </div>
-                                        )} */}
-
-                                        {/* MULTI FIELD CHANGE */}
-                                        {/* {Array.isArray(
-                                          historyEntry.oldValue
-                                        ) && (
-                                          <ul className="mt-1 space-y-1 text-sm">
-                                            {historyEntry.oldValue.map(
-                                              (change, idx) => (
-                                                <li
-                                                  key={idx}
-                                                  className="flex items-center gap-2"
-                                                >
-                                                  <span className="text-orange-700 font-medium">
-                                                    {change.fieldLabel ||
-                                                      change.field}
-                                                  </span>
-                                                  <span className="text-red-500 line-through">
-                                                    {formatDateOnly(
-                                                      change.oldValue
-                                                    )}
-                                                  </span>
-                                                  <span className="text-gray-400">
-                                                    →
-                                                  </span>
-                                                  <span className="text-green-700 font-semibold">
-                                                    {formatDateOnly(
-                                                      change.newValue
-                                                    )}
-                                                  </span>
-                                                </li>
-                                              )
-                                            )}
-                                          </ul>
-                                        )} */}
                                         {historyEntry.changes &&
                                         historyEntry.changes.length > 0 ? (
                                           <ul className="mt-1 space-y-1 text-sm">
@@ -1005,8 +942,6 @@ const SellerRecordList = ({ onFilter }) => {
                           )}
                         </>
                       )}
-
-                      {/* UPDATED: Show validation errors below row */}
                       {isEditing &&
                         Object.keys(validationErrors).length > 0 && (
                           <tr className="bg-red-50 border-b">
