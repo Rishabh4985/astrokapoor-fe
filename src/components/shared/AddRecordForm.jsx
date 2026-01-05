@@ -53,8 +53,7 @@ const getCountryCodeFromIso = (isoCode) => {
   try {
     if (!isoCode) return "";
     return `+${getCountryCallingCode(isoCode)}`;
-  } catch (error) {
-    console.log(error);
+  } catch {
     return "";
   }
 };

@@ -30,6 +30,15 @@ const AdminSalesLookup = ({ onFilter }) => {
   const [categoryValue, setCategoryValue] = useState("");
   const [category, setCategory] = useState("all");
 
+  const capitalizeValue = (value) => {
+    if (!value || typeof value !== "string") return value;
+    return value
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const flattenedRecords = useMemo(() => {
     if (!allRecords) return [];
 
@@ -58,7 +67,7 @@ const AdminSalesLookup = ({ onFilter }) => {
   }, new Set(Object.keys(expectedHeaders)));
 
   const headers = Array.from(dynamicHeaders).filter(
-    (key) => key.trim() !== "" && key !== "serialno"
+    (key) => key && key.trim() !== "" && key !== "serialno" && key !== "_id"
   );
 
   const formatValue = (key, value) => {
@@ -83,6 +92,10 @@ const AdminSalesLookup = ({ onFilter }) => {
     ) {
       const [year, month, day] = value.split("-");
       return `${day}/${month}/${year}`;
+    }
+
+    if (typeof value === "string" && value.length < 100) {
+      return capitalizeValue(value);
     }
 
     return value;

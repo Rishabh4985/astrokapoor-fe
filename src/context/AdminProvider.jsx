@@ -7,10 +7,6 @@ const API_BASE = import.meta.env.DEV
   ? "http://localhost:4000/api/admin"
   : `${import.meta.env.VITE_API_URL}/admin`;
 
-   const API_URL = import.meta.env.DEV
-        ? "http://localhost:4000/api"
-        : import.meta.env.VITE_API_URL;
-
 const formatDate = (date) => {
   if (!date) return "";
   const d = new Date(date);
@@ -24,7 +20,7 @@ const formatDate = (date) => {
 const AdminProvider = ({ children }) => {
   const { authToken, userRole } = useAuth();
   const [error, setError] = useState(null);
-  
+
   // Existing records state
   const [records, setRecords] = useState([]);
   const [page, setPage] = useState(1);
@@ -37,9 +33,24 @@ const AdminProvider = ({ children }) => {
 
   // NEW: Chart data state
   const [chartData, setChartData] = useState({
-    'monthly-sales': { data: [], loading: false, error: null, lastFetched: null },
-    'sales-vs-refund': { data: [], loading: false, error: null, lastFetched: null },
-    'status-count': { data: [], loading: false, error: null, lastFetched: null }
+    "monthly-sales": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
+    "sales-vs-refund": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
+    "status-count": {
+      data: [],
+      loading: false,
+      error: null,
+      lastFetched: null,
+    },
   });
 
   const chartDataRef = useRef(chartData);
@@ -57,90 +68,129 @@ const AdminProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-  chartDataRef.current = chartData;
-}, [chartData]);
+    chartDataRef.current = chartData;
+  }, [chartData]);
 
-
-  // Helper function to check if data is stale
-  const isDataStale = useCallback((lastFetched) => {
-    if (!lastFetched) return true;
-    return Date.now() - lastFetched > CACHE_DURATION;
-  }, [CACHE_DURATION]);
+  //function to check if data is stale
+  const isDataStale = useCallback(
+    (lastFetched) => {
+      if (!lastFetched) return true;
+      return Date.now() - lastFetched > CACHE_DURATION;
+    },
+    [CACHE_DURATION]
+  );
 
   // Generic chart data fetcher
-  const fetchChartData = useCallback(async (chartType) => {
-    if (!authToken || !userRole) return [];
+  const fetchChartData = useCallback(
+    async (chartType) => {
+      if (!authToken || userRole !== "admin") return [];
 
-    // Check if we have fresh data
-    const currentChartData = chartDataRef.current[chartType];
-    if (currentChartData && currentChartData.data.length > 0 && !isDataStale(currentChartData.lastFetched)) {
-      return currentChartData.data; // Return cached data
-    }
+      // Use cached data if fresh
+      const currentChartData = chartDataRef.current[chartType];
+      if (
+        currentChartData &&
+        currentChartData.data.length > 0 &&
+        !isDataStale(currentChartData.lastFetched)
+      ) {
+        return currentChartData.data;
+      }
 
-    try {
-      setChartData(prev => ({
-        ...prev,
-        [chartType]: { ...prev[chartType], loading: true, error: null }
-      }));
-      
-      const basePath = `${API_URL}/${userRole}/charts`;
-      const response = await fetch(`${basePath}/${chartType}`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 20000,
-      });
+      try {
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: { ...prev[chartType], loading: true, error: null },
+        }));
 
-      if (!response.ok) throw new Error(`Failed to fetch ${chartType} data`);
-      const result = await response.json();
+        const res = await axios.get(`${API_BASE}/charts/${chartType}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+          timeout: 20000,
+        });
 
-      if (!isMountedRef.current) return [];
+        if (!isMountedRef.current) return [];
 
-      setChartData(prev => ({
-        ...prev,
-        [chartType]: {
-          data: result,
-          loading: false,
-          error: null,
-          lastFetched: Date.now()
-        }
-      }));
+        const result = Array.isArray(res.data)
+          ? res.data
+          : res.data?.data || [];
 
-      return result;
-    } catch (error) {
-      if (!isMountedRef.current) return [];
-      
-      console.error(`Failed to fetch ${chartType} data:`, error);
-      setChartData(prev => ({
-        ...prev,
-        [chartType]: {
-          ...prev[chartType],
-          loading: false,
-          error: error.message
-        }
-      }));
-      return [];
-    }
-  }, [authToken, userRole, isDataStale]);
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: {
+            data: result,
+            loading: false,
+            error: null,
+            lastFetched: Date.now(),
+          },
+        }));
+
+        return result;
+      } catch (error) {
+        if (!isMountedRef.current) return [];
+
+        console.error(`Failed to fetch ${chartType} data:`, error);
+        setChartData((prev) => ({
+          ...prev,
+          [chartType]: {
+            ...prev[chartType],
+            loading: false,
+            error:
+              error.response?.data?.message ||
+              error.message ||
+              "Failed to fetch chart data",
+          },
+        }));
+        return [];
+      }
+    },
+    [authToken, userRole, isDataStale]
+  );
 
   // Specific chart data fetchers
-  const fetchMonthlySalesData = useCallback(() => fetchChartData('monthly-sales'), [fetchChartData]);
-  const fetchSalesVsRefundData = useCallback(() => fetchChartData('sales-vs-refund'), [fetchChartData]);
-  const fetchStatusData = useCallback(() => fetchChartData('status-count'), [fetchChartData]);
+  const fetchMonthlySalesData = useCallback(
+    () => fetchChartData("monthly-sales"),
+    [fetchChartData]
+  );
+  const fetchSalesVsRefundData = useCallback(
+    () => fetchChartData("sales-vs-refund"),
+    [fetchChartData]
+  );
+  const fetchStatusData = useCallback(
+    () => fetchChartData("status-count"),
+    [fetchChartData]
+  );
 
   // Force refresh chart data
-  const refreshChartData = useCallback((chartType) => {
-    setChartData(prev => ({
-      ...prev,
-      [chartType]: { ...prev[chartType], lastFetched: null }
-    }));
-    return fetchChartData(chartType);
-  }, [fetchChartData]);
+  const refreshChartData = useCallback(
+    (chartType) => {
+      setChartData((prev) => ({
+        ...prev,
+        [chartType]: { ...prev[chartType], lastFetched: null },
+      }));
+      return fetchChartData(chartType);
+    },
+    [fetchChartData]
+  );
 
   // Clear all chart cache
   const clearChartCache = useCallback(() => {
     setChartData({
-      'monthly-sales': { data: [], loading: false, error: null, lastFetched: null },
-      'sales-vs-refund': { data: [], loading: false, error: null, lastFetched: null },
-      'status-count': { data: [], loading: false, error: null, lastFetched: null }
+      "monthly-sales": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
+      "sales-vs-refund": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
+      "status-count": {
+        data: [],
+        loading: false,
+        error: null,
+        lastFetched: null,
+      },
     });
   }, []);
 
@@ -151,7 +201,7 @@ const AdminProvider = ({ children }) => {
       return result;
     };
 
-    const filtered = omitKeys(record, ["_id", "createdAt", "updatedAt", "__v"]);
+    const filtered = omitKeys(record, ["createdAt", "updatedAt", "__v"]);
 
     return {
       ...filtered,
@@ -159,7 +209,7 @@ const AdminProvider = ({ children }) => {
     };
   }, []);
 
-  // New paginated fetch (matches backend)
+  // New paginated fetch
   const fetchRecords = useCallback(
     async (pageNumber = 1) => {
       if (!authToken) return;
@@ -207,9 +257,7 @@ const AdminProvider = ({ children }) => {
         timeout: 60000,
       });
 
-      const dataArray = Array.isArray(res.data.records)
-        ? res.data.records
-        : [];
+      const dataArray = Array.isArray(res.data.records) ? res.data.records : [];
       const cleanedData = dataArray.map(cleanRecord);
       setAllRecords(cleanedData);
     } catch (error) {
@@ -296,12 +344,110 @@ const AdminProvider = ({ children }) => {
     [authToken, cleanRecord]
   );
 
+  const updateRecord = useCallback(
+    async (id, partialUpdate) => {
+      if (!authToken) return;
+
+      try {
+        setError(null);
+        const res = await axios.patch(
+          `${API_BASE}/records/${id}`,
+          partialUpdate,
+          {
+            headers: { Authorization: `Bearer ${authToken}` },
+            timeout: 20000,
+          }
+        );
+
+        const updated = res.data.record || res.data;
+        const cleaned = cleanRecord(updated);
+
+        // Sync local state
+        setRecords((prev) =>
+          prev.map((rec) => (rec._id === cleaned._id ? cleaned : rec))
+        );
+
+        setAllRecords((prev) =>
+          prev.map((rec) => (rec._id === cleaned._id ? cleaned : rec))
+        );
+      } catch (error) {
+        console.error("Failed to update record", error);
+        setError(
+          error.response?.data?.message ||
+            "Failed to update record. Please try again."
+        );
+      }
+    },
+    [authToken, cleanRecord]
+  );
+
+  const getRecordById = useCallback(
+    async (id) => {
+      if (!authToken) return null;
+      try {
+        setError(null);
+        const res = await axios.get(`${API_BASE}/records/${id}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+          timeout: 20000,
+        });
+
+        const record = res.data.record || res.data;
+        const cleaned = cleanRecord(record);
+
+        // Optionally sync into local state if not present
+        setRecords((prev) => {
+          const exists = prev.some((r) => r._id === cleaned._id);
+          return exists
+            ? prev.map((r) => (r._id === cleaned._id ? cleaned : r))
+            : [...prev, cleaned];
+        });
+
+        return cleaned;
+      } catch (error) {
+        console.error("Failed to fetch record by id", error);
+        setError(
+          error.response?.data?.message ||
+            "Failed to fetch record. Please try again."
+        );
+        return null;
+      }
+    },
+    [authToken, cleanRecord]
+  );
+
+  const deleteRecord = useCallback(
+    async (id) => {
+      if (!authToken) return;
+
+      try {
+        setError(null);
+        await axios.delete(`${API_BASE}/records/${id}`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+          timeout: 20000,
+        });
+
+        // Remove from local lists
+        setRecords((prev) => prev.filter((r) => r._id !== id));
+        setAllRecords((prev) => prev.filter((r) => r._id !== id));
+
+        // Optionally adjust totalRecords
+        setTotalRecords((prev) => Math.max(prev - 1, 0));
+      } catch (error) {
+        console.error("Failed to delete record", error);
+        setError(
+          error.response?.data?.message ||
+            "Failed to delete record. Please try again."
+        );
+      }
+    },
+    [authToken]
+  );
+
   const clearError = useCallback(() => setError(null), []);
 
   return (
     <AdminContext.Provider
       value={{
-        // Existing values
         records,
         setRecords,
         addRecord,
@@ -317,8 +463,10 @@ const AdminProvider = ({ children }) => {
         error,
         clearError,
         fetchRecords,
-        
-        // NEW: Chart data values
+        updateRecord,
+        getRecordById,
+        deleteRecord,
+
         chartData,
         fetchMonthlySalesData,
         fetchSalesVsRefundData,
