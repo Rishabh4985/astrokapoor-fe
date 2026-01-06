@@ -14,16 +14,16 @@ import {
 } from "libphonenumber-js";
 import disposableDomains from "disposable-email-domains";
 
+// ============ VALIDATION FUNCTIONS ============
+
 const validateEmailSyntax = (email) =>
   /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i.test(email);
 
 const validateEmail = (email) => {
   if (!email) return true;
   if (!validateEmailSyntax(email)) return false;
-
   const domain = email.split("@")[1]?.toLowerCase();
   if (!domain || disposableDomains.includes(domain)) return false;
-
   return true;
 };
 
@@ -47,7 +47,7 @@ const isValidState = (countryIso, stateName) => {
   return State.getStatesOfCountry(countryIso).some((s) => s.name === stateName);
 };
 
-const validateName = (value) => value.trim().length >= 5;
+const validateName = (value) => value.trim().length >= 2;
 
 const getCountryCodeFromIso = (isoCode) => {
   try {
@@ -68,6 +68,8 @@ const buildFullPhone = (countryIso, number) => {
   }
 };
 
+// ============ MAIN COMPONENT ============
+
 const AddRecordForm = ({ onAdd }) => {
   const { authToken, userRole } = useAuth();
   const seller = JSON.parse(localStorage.getItem("currentSeller"));
@@ -76,25 +78,30 @@ const AddRecordForm = ({ onAdd }) => {
   const [formData, setFormData] = useState({
     ...expectedHeaders,
     handlerId: isSeller ? seller.email : "",
-    countryIso: "",
+    countryIso: "", // Address country
+    mobile1CountryIso: "", // Phone 1 country (SEPARATED)
+    mobile2CountryIso: "", // Phone 2 country (SEPARATED)
   });
 
   const [mode, setMode] = useState("new");
   const [searchEmail, setSearchEmail] = useState("");
   const [existingUserData, setExistingUserData] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(""); // Address country
 
   const countries = Country.getAllCountries();
   const states = selectedCountry
     ? State.getStatesOfCountry(selectedCountry)
     : [];
 
+  // ============ HANDLER FUNCTIONS ============
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  // Address country change (does NOT affect phone countries)
   const handleCountryChange = (e) => {
     const countryName = e.target.value;
     const countryObj = countries.find((c) => c.name === countryName);
@@ -104,10 +111,22 @@ const AddRecordForm = ({ onAdd }) => {
       ...prev,
       country: countryName,
       countryIso: isoCode,
-      state: "",
+      state: "", // Reset state when country changes
     }));
 
     setSelectedCountry(isoCode);
+  };
+
+  // Phone 1 country change (SEPARATE)
+  const handlePhoneCountryChange = (e, phoneNumber) => {
+    const countryName = e.target.value;
+    const countryObj = countries.find((c) => c.name === countryName);
+    const isoCode = countryObj?.isoCode || "";
+
+    setFormData((prev) => ({
+      ...prev,
+      [`${phoneNumber}CountryIso`]: isoCode,
+    }));
   };
 
   const handleSubmit = async (e) => {
@@ -145,27 +164,32 @@ const AddRecordForm = ({ onAdd }) => {
       return;
     }
 
-    if (formData.countryIso) {
-      if (
-        formData.mobile1 &&
-        !validatePhone(formData.countryIso, formData.mobile1)
-      ) {
-        toast.error("Invalid mobile number for selected country.");
+    // Validate phone 1 with its own country
+    if (formData.mobile1 && formData.mobile1CountryIso) {
+      if (!validatePhone(formData.mobile1CountryIso, formData.mobile1)) {
+        toast.error("Invalid mobile number for selected phone country.");
         return;
       }
-      if (
-        formData.mobile2 &&
-        !validatePhone(formData.countryIso, formData.mobile2)
-      ) {
+    } else if (formData.mobile1 && !formData.mobile1CountryIso) {
+      toast.error("Please select country for primary mobile number.");
+      return;
+    }
+
+    // Validate phone 2 with its own country
+    if (formData.mobile2 && formData.mobile2CountryIso) {
+      if (!validatePhone(formData.mobile2CountryIso, formData.mobile2)) {
         toast.error("Invalid alternate mobile number.");
         return;
       }
+    } else if (formData.mobile2 && !formData.mobile2CountryIso) {
+      toast.error("Please select country for alternate mobile number.");
+      return;
     }
 
     const newRecord = {
       ...formData,
-      mobile1: buildFullPhone(formData.countryIso, formData.mobile1),
-      mobile2: buildFullPhone(formData.countryIso, formData.mobile2),
+      mobile1: buildFullPhone(formData.mobile1CountryIso, formData.mobile1),
+      mobile2: buildFullPhone(formData.mobile2CountryIso, formData.mobile2),
       dateOfPayment: formData.dateOfPayment
         ? new Date(formData.dateOfPayment)
         : new Date(),
@@ -216,15 +240,16 @@ const AddRecordForm = ({ onAdd }) => {
             JSON.stringify([...existingUsers, newUser])
           );
           toast.info("User also saved in session storage.");
-        } else {
-          toast.warning("Similar user record already exists in session.");
         }
       }
 
+      // Reset form
       setFormData({
         ...expectedHeaders,
         handlerId: isSeller ? seller.email : "",
         countryIso: "",
+        mobile1CountryIso: "",
+        mobile2CountryIso: "",
       });
       setMode("new");
       setSearchEmail("");
@@ -275,16 +300,39 @@ const AddRecordForm = ({ onAdd }) => {
 
         const userCountryObj = countries.find((c) => c.name === user.country);
 
+        // Extract phone countries from full phone numbers if available
+        let mobile1CountryIso = "";
+        let mobile2CountryIso = "";
+
+        if (user.mobile1) {
+          // Try to match the country code from existing phone
+          const countryFromPhone = countries.find((c) =>
+            user.mobile1?.startsWith(`+${getCountryCallingCode(c.isoCode)}`)
+          );
+          mobile1CountryIso =
+            countryFromPhone?.isoCode || userCountryObj?.isoCode || "";
+        }
+
+        if (user.mobile2) {
+          const countryFromPhone = countries.find((c) =>
+            user.mobile2?.startsWith(`+${getCountryCallingCode(c.isoCode)}`)
+          );
+          mobile2CountryIso =
+            countryFromPhone?.isoCode || userCountryObj?.isoCode || "";
+        }
+
         setFormData((prev) => ({
           ...prev,
           dateOfPayment: prev.dateOfPayment || "",
           customerName: user.customerName || prev.customerName || "",
           email1: user.email1 || "",
           email2: user.email2 || "",
-          mobile1: user.mobile1 || "",
-          mobile2: user.mobile2 || "",
+          mobile1: user.mobile1?.replace(/^\+\d+/, "") || "", // Remove country code
+          mobile2: user.mobile2?.replace(/^\+\d+/, "") || "",
           country: user.country || "",
           countryIso: userCountryObj?.isoCode || "",
+          mobile1CountryIso: mobile1CountryIso, // Set phone country separately
+          mobile2CountryIso: mobile2CountryIso,
           state: user.state || "",
           address: user.address || "",
           expert: user.expert || "",
@@ -329,6 +377,8 @@ const AddRecordForm = ({ onAdd }) => {
     toast.info("User data loaded. You can now add a new record.");
   };
 
+  // ============ UI COMPONENTS ============
+
   const LabelWithAsterisk = ({ text }) => (
     <label className="text-sm text-gray-700 mb-1">
       {text} <span className="text-red-500">*</span>
@@ -348,7 +398,10 @@ const AddRecordForm = ({ onAdd }) => {
     return "text";
   };
 
-  const isCountrySelected = !!formData.countryIso;
+  const isMobile1CountrySelected = !!formData.mobile1CountryIso;
+  const isMobile2CountrySelected = !!formData.mobile2CountryIso;
+
+  // ============ RENDER ============
 
   return (
     <div className="mt-8 px-4">
@@ -438,7 +491,8 @@ const AddRecordForm = ({ onAdd }) => {
             {Object.entries(headerLabels).map(([key, label]) => {
               if (isSeller && key === "handlerId") return null;
 
-              if (key === "mobile1" || key === "mobile2") {
+              // Mobile 1 with SEPARATE country selector
+              if (key === "mobile1") {
                 return (
                   <div key={key} className="flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
@@ -448,7 +502,7 @@ const AddRecordForm = ({ onAdd }) => {
                         <label className="text-sm text-gray-700">{label}</label>
                       )}
 
-                      {!isCountrySelected && (
+                      {!isMobile1CountrySelected && (
                         <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
                           Select country first
                         </span>
@@ -456,10 +510,14 @@ const AddRecordForm = ({ onAdd }) => {
                     </div>
 
                     <div className="flex w-full rounded-lg border border-gray-300 overflow-hidden">
-                      {/* Country selector */}
+                      {/* Phone 1 Country Selector (INDEPENDENT) */}
                       <select
-                        value={formData.country}
-                        onChange={handleCountryChange}
+                        value={
+                          countries.find(
+                            (c) => c.isoCode === formData.mobile1CountryIso
+                          )?.name || ""
+                        }
+                        onChange={(e) => handlePhoneCountryChange(e, "mobile1")}
                         className="bg-gray-100 text-sm px-1 outline-none border-r border-gray-300 max-w-[120px]"
                       >
                         <option value="">Country</option>
@@ -470,7 +528,6 @@ const AddRecordForm = ({ onAdd }) => {
                         ))}
                       </select>
 
-                      {/* Mobile input */}
                       <input
                         id={key}
                         name={key}
@@ -478,7 +535,7 @@ const AddRecordForm = ({ onAdd }) => {
                         onChange={handleChange}
                         type="tel"
                         placeholder="Mobile number"
-                        disabled={!isCountrySelected}
+                        disabled={!isMobile1CountrySelected}
                         className="flex-1 px-3 py-2 text-sm outline-none"
                       />
                     </div>
@@ -486,6 +543,59 @@ const AddRecordForm = ({ onAdd }) => {
                 );
               }
 
+              // Mobile 2 with SEPARATE country selector
+              if (key === "mobile2") {
+                return (
+                  <div key={key} className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                      {requiredFields.includes(key) ? (
+                        <LabelWithAsterisk text={label} />
+                      ) : (
+                        <label className="text-sm text-gray-700">{label}</label>
+                      )}
+
+                      {!isMobile2CountrySelected && (
+                        <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
+                          Select country first
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex w-full rounded-lg border border-gray-300 overflow-hidden">
+                      {/* Phone 2 Country Selector (INDEPENDENT) */}
+                      <select
+                        value={
+                          countries.find(
+                            (c) => c.isoCode === formData.mobile2CountryIso
+                          )?.name || ""
+                        }
+                        onChange={(e) => handlePhoneCountryChange(e, "mobile2")}
+                        className="bg-gray-100 text-sm px-1 outline-none border-r border-gray-300 max-w-[120px]"
+                      >
+                        <option value="">Country</option>
+                        {countries.map((c) => (
+                          <option key={c.isoCode} value={c.name}>
+                            {c.isoCode} {getCountryCodeFromIso(c.isoCode)}
+                          </option>
+                        ))}
+                      </select>
+
+                      <input
+                        id={key}
+                        name={key}
+                        value={formData[key]}
+                        onChange={handleChange}
+                        type="tel"
+                        placeholder="Alternate mobile number"
+                        disabled={!isMobile2CountrySelected}
+                        className="flex-1 px-3 py-2 text-sm outline-none"
+                      />
+                    </div>
+                  </div>
+                );
+              }
+
+              // All other fields (unchanged logic)
               return (
                 <div key={key} className="flex flex-col">
                   {requiredFields.includes(key) ? (

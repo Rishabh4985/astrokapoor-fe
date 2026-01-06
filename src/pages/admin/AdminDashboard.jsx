@@ -72,9 +72,9 @@ const AdminDashBoard = () => {
               className="border rounded px-3 py-1 bg-white text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
             >
               <option value="all">All</option>
-              <option value="gemstones">Gemstones</option>
-              <option value="products">Products</option>
-              <option value="consultation">Consultation</option>
+              <option value="Gemstones">Gemstones</option>
+              <option value="Products">Products</option>
+              <option value="Consultation">Consultation</option>
             </select>
           </label>
 
