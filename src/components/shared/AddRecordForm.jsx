@@ -239,7 +239,7 @@ const AddRecordForm = ({ onAdd }) => {
             "userList",
             JSON.stringify([...existingUsers, newUser])
           );
-          toast.info("User also saved in session storage.");
+          toast.info("Similar name record exists.");
         }
       }
 
