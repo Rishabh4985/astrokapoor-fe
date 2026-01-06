@@ -52,6 +52,17 @@ const SellerRecordList = ({ onFilter }) => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 100;
 
+  const nonCapitalizedFields = ["email1", "email2", "handlerId"];
+
+  const capitalizeValue = (value) => {
+    if (!value || typeof value !== "string") return value;
+    return value
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const [filters, setFilters] = useState({
     status: "",
     service: "",
@@ -191,6 +202,22 @@ const SellerRecordList = ({ onFilter }) => {
     ) {
       const [year, month, day] = value.split("-");
       return `${day}/${month}/${year}`;
+    }
+
+    if (
+      typeof value === "string" &&
+      value.length < 100 &&
+      !nonCapitalizedFields.includes(key)
+    ) {
+      return capitalizeValue(value);
+    }
+
+    if (
+      key.toLowerCase().includes("amount") ||
+      key.toLowerCase().includes("refund") ||
+      key.toLowerCase().includes("pending")
+    ) {
+      return `₹${Number(value).toFixed(2)}`;
     }
     return value;
   };

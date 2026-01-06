@@ -32,6 +32,17 @@ const SellerSalesLookup = ({ onFilter }) => {
   const [category, setCategory] = useState("all");
   const itemsPerPage = 100;
 
+  const nonCapitalizedFields = ["email1", "email2", "handlerId"];
+
+  const capitalizeValue = (value) => {
+    if (!value || typeof value !== "string") return value;
+    return value
+      .toLowerCase()
+      .split(" ")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
   const flattenedRecords = useMemo(() => {
     if (!sellerRecords || !Array.isArray(sellerRecords)) return [];
 
@@ -51,7 +62,7 @@ const SellerSalesLookup = ({ onFilter }) => {
     );
   }, [dynamicHeaders]);
 
-  const formatValue = useCallback((key, value) => {
+  const formatValue = (key, value) => {
     if (value === null || value === undefined || value === "") return "-";
 
     if (key === "category" && typeof value === "string") {
@@ -87,8 +98,32 @@ const SellerSalesLookup = ({ onFilter }) => {
       return `${day}/${month}/${year}`;
     }
 
+    if (
+      typeof value === "string" &&
+      value.length < 100 &&
+      !nonCapitalizedFields.includes(key)
+    ) {
+      return capitalizeValue(value);
+    }
+
+    if (
+      key.toLowerCase().includes("amount") ||
+      key.toLowerCase().includes("refund") ||
+      key.toLowerCase().includes("pending")
+    ) {
+      return `₹${Number(value).toFixed(2)}`;
+    }
+
+    if (
+      typeof value === "string" &&
+      value.length < 100 &&
+      !nonCapitalizedFields.includes(key)
+    ) {
+      return capitalizeValue(value);
+    }
+
     return value;
-  }, []);
+  };
 
   const isRecordInDateRange = useCallback(
     (recordDateStr) => {

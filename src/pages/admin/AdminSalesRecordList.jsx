@@ -63,6 +63,8 @@ const AdminSalesRecordList = ({ onFilter }) => {
 
   const itemsPerPage = 100;
 
+  const nonCapitalizedFields = ["email1", "email2", "handlerId"];
+
   const capitalizeValue = (value) => {
     if (!value || typeof value !== "string") return value;
     return value
@@ -165,7 +167,11 @@ const AdminSalesRecordList = ({ onFilter }) => {
       return `₹${Number(value).toFixed(2)}`;
     }
 
-    if (typeof value === "string" && value.length < 100) {
+    if (
+      typeof value === "string" &&
+      value.length < 100 &&
+      !nonCapitalizedFields.includes(key)
+    ) {
       return capitalizeValue(value);
     }
 

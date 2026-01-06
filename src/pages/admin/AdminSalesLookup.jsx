@@ -30,6 +30,8 @@ const AdminSalesLookup = ({ onFilter }) => {
   const [categoryValue, setCategoryValue] = useState("");
   const [category, setCategory] = useState("all");
 
+  const nonCapitalizedFields = ["email1", "email2", "handlerId"];
+
   const capitalizeValue = (value) => {
     if (!value || typeof value !== "string") return value;
     return value
@@ -94,7 +96,19 @@ const AdminSalesLookup = ({ onFilter }) => {
       return `${day}/${month}/${year}`;
     }
 
-    if (typeof value === "string" && value.length < 100) {
+    if (
+      key.toLowerCase().includes("amount") ||
+      key.toLowerCase().includes("refund") ||
+      key.toLowerCase().includes("pending")
+    ) {
+      return `₹${Number(value).toFixed(2)}`;
+    }
+
+    if (
+      typeof value === "string" &&
+      value.length < 100 &&
+      !nonCapitalizedFields.includes(key)
+    ) {
       return capitalizeValue(value);
     }
 
