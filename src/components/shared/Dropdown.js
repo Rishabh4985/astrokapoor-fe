@@ -120,7 +120,7 @@ export const headerLabels = {
 };
 
 export const dropdownOptions = {
-  status: ["Paid", "Pending", "Refunded"],
+  status: ["Paid", "Pending", "Refunded","Consultation Done"],
   service: [
     "Acne Treatment in Medical Astrology",
     "Acquisition Report",

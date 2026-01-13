@@ -239,7 +239,7 @@ const AddRecordForm = ({ onAdd }) => {
             "userList",
             JSON.stringify([...existingUsers, newUser])
           );
-          toast.info("Similar name record exists.");
+          // toast.info("Similar name record exists.");
         }
       }
 
