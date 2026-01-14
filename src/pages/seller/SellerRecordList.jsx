@@ -13,6 +13,7 @@ import {
   hiddenFields,
 } from "../../components/shared/Dropdown.js";
 import Filters from "../../components/shared/Filters.jsx";
+import SellerHistoryRecords from "../../components/seller/SellerHistoryRecords.jsx";
 
 const statusOptions = dropdownOptions.status;
 const categoryOptions = dropdownOptions.category;
@@ -639,7 +640,7 @@ const SellerRecordList = () => {
                         </td>
                       </tr>
 
-                      {isHistoryExpanded && (
+                      {/* {isHistoryExpanded && (
                         <>
                           {loadingHistory[record._id] ? (
                             <tr className="bg-blue-50 border-b">
@@ -785,7 +786,18 @@ const SellerRecordList = () => {
                             </tr>
                           )}
                         </>
+                      )} */}
+
+                      {isHistoryExpanded && (
+                        <SellerHistoryRecords
+                          recordId={record._id}
+                          headers={headers}
+                          history={recordHistory[record._id]}
+                          loading={loadingHistory[record._id]}
+                          formatDateOnly={formatDateOnly}
+                        />
                       )}
+
                       {isEditing &&
                         Object.keys(validationErrors).length > 0 && (
                           <tr className="bg-red-50 border-b">
