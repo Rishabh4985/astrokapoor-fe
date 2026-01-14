@@ -1,10 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
@@ -12,7 +6,9 @@ import { Search, Calendar, Filter, Table2, Sparkles, Tags } from "lucide-react";
 import {
   expectedHeaders,
   headerLabels,
+  dropdownOptions,
 } from "../../components/shared/Dropdown";
+import Filters from "../../components/shared/Filters";
 
 const AdminSalesLookup = ({ onFilter }) => {
   const {
@@ -23,12 +19,7 @@ const AdminSalesLookup = ({ onFilter }) => {
     itemsPerPage = 100,
   } = useContext(AdminContext);
 
-  const [query, setQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterValue, setFilterValue] = useState("");
-  const [categoryKey, setCategoryKey] = useState("");
-  const [categoryValue, setCategoryValue] = useState("");
-  const [category, setCategory] = useState("all");
+  const [filteredRecords, setFilteredRecords] = useState([]);
 
   const nonCapitalizedFields = ["email1", "email2", "handlerId"];
 
@@ -115,101 +106,11 @@ const AdminSalesLookup = ({ onFilter }) => {
     return value;
   };
 
-  const isRecordInDateRange = useCallback(
-    (recordDateStr) => {
-      if (!filterType || filterType === "all" || !filterValue) return true;
-      const recordDate = new Date(recordDateStr);
-      if (isNaN(recordDate)) return false;
-
-      switch (filterType) {
-        case "date": {
-          const selected = new Date(filterValue);
-          return (
-            recordDate.getFullYear() === selected.getFullYear() &&
-            recordDate.getMonth() === selected.getMonth() &&
-            recordDate.getDate() === selected.getDate()
-          );
-        }
-        case "week": {
-          const [year, weekNumber] = filterValue.split("-W");
-          const firstDayOfYear = new Date(year, 0, 1);
-          const days = (parseInt(weekNumber) - 1) * 7;
-          const weekStart = new Date(
-            firstDayOfYear.setDate(firstDayOfYear.getDate() + days)
-          );
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-          return recordDate >= weekStart && recordDate <= weekEnd;
-        }
-        case "month": {
-          const [year, month] = filterValue.split("-");
-          return (
-            recordDate.getFullYear() === parseInt(year) &&
-            recordDate.getMonth() === parseInt(month) - 1
-          );
-        }
-        case "year":
-          return recordDate.getFullYear() === parseInt(filterValue);
-        default:
-          return true;
-      }
-    },
-    [filterType, filterValue]
-  );
-
-  // Apply ALL filters to ALL records
-  const filteredRecords = useMemo(() => {
-    return flattenedRecords.filter((record) => {
-      const matchesQuery = Object.values(record).some((val) =>
-        String(val || "")
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      );
-
-      const matchesDate = isRecordInDateRange(record.dateOfPayment);
-
-      const matchesMainCategory =
-        category === "all" ? true : record.category === category;
-
-      const matchesExtraCategory =
-        !categoryKey || !categoryValue
-          ? true
-          : String(record[categoryKey] || "").toLowerCase() ===
-            categoryValue.toLowerCase();
-
-      return (
-        matchesQuery &&
-        matchesDate &&
-        matchesMainCategory &&
-        matchesExtraCategory
-      );
-    });
-  }, [
-    flattenedRecords,
-    query,
-    category,
-    categoryKey,
-    categoryValue,
-    isRecordInDateRange,
-  ]);
-
   const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
   const currentPageRecords = filteredRecords.slice(
     (page - 1) * itemsPerPage,
     page * itemsPerPage
   );
-
-  useEffect(() => {
-    if (setPage) setPage(1);
-  }, [
-    query,
-    filterType,
-    filterValue,
-    category,
-    categoryKey,
-    categoryValue,
-    setPage,
-  ]);
 
   const handleImport = (importedData) => {
     setRecords(importedData);
@@ -227,9 +128,22 @@ const AdminSalesLookup = ({ onFilter }) => {
     }
   };
 
+  const categoryOptionsConfig = [
+    { key: "status", label: "Status", values: dropdownOptions.status },
+    { key: "mode", label: "Payment Mode", values: dropdownOptions.mode },
+    { key: "service", label: "Service", values: dropdownOptions.service },
+    { key: "handleBy", label: "Handled By" },
+    { key: "expert", label: "Expert" },
+    { key: "country", label: "Country", values: dropdownOptions.country },
+  ];
+
   useEffect(() => {
     if (onFilter) onFilter(filteredRecords);
   }, [filteredRecords, onFilter]);
+
+  useEffect(() => {
+    setFilteredRecords(flattenedRecords);
+  }, [flattenedRecords]);
 
   return (
     <div className="p-6 bg-gradient-to-br from-orange-50 via-white to-orange-100 rounded-2xl shadow-xl mb-8 border border-orange-200 relative overflow-hidden">
@@ -249,131 +163,16 @@ const AdminSalesLookup = ({ onFilter }) => {
       </div>
 
       <div className="bg-white/70 border border-orange-200 backdrop-blur-sm rounded-xl p-3 mb-6 shadow-md relative z-10">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <input
-              type="text"
-              className="w-full pl-9 pr-3 py-1.5 rounded-md border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-500"
-              placeholder="Search across all records..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-            />
-          </div>
-
-          <div className="relative w-full">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <select
-              value={filterType}
-              onChange={(e) => {
-                setFilterType(e.target.value);
-                setFilterValue("");
-              }}
-              className="w-full pl-9 pr-3 py-1.5 rounded-md border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-500 appearance-none"
-            >
-              <option value="all">All Dates</option>
-              <option value="date">By Date</option>
-              <option value="week">By Week</option>
-              <option value="month">By Month</option>
-              <option value="year">By Year</option>
-            </select>
-          </div>
-
-          {filterType === "date" && (
-            <input
-              type="date"
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="px-2 py-1.5 border border-orange-300 rounded-md text-sm"
-            />
-          )}
-          {filterType === "week" && (
-            <input
-              type="week"
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="px-2 py-1.5 border border-orange-300 rounded-md text-sm"
-            />
-          )}
-          {filterType === "month" && (
-            <input
-              type="month"
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="px-2 py-1.5 border border-orange-300 rounded-md text-sm"
-            />
-          )}
-          {filterType === "year" && (
-            <select
-              value={filterValue}
-              onChange={(e) => setFilterValue(e.target.value)}
-              className="px-2 py-1.5 border border-orange-300 rounded-md text-sm"
-            >
-              <option value="">Select Year</option>
-              {Array.from({ length: 15 }, (_, i) => {
-                const year = new Date().getFullYear() - i;
-                return (
-                  <option key={year} value={year}>
-                    {year}
-                  </option>
-                );
-              })}
-            </select>
-          )}
-
-          <div className="relative w-full flex items-center gap-2">
-            <Tags className="w-4 h-4 text-orange-600" />
-            <span className="font-semibold text-orange-800">Category:</span>
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="border rounded px-3 py-1 bg-white text-orange-700 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              aria-label="Select category"
-            >
-              <option value="all">All</option>
-              <option value="Gemstones">Gemstones</option>
-              <option value="Products">Products</option>
-              <option value="Consultation">Consultation</option>
-            </select>
-          </div>
-
-          <div className="relative w-full">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <select
-              value={categoryKey}
-              onChange={(e) => {
-                setCategoryKey(e.target.value);
-                setCategoryValue("");
-              }}
-              className="w-full pl-9 pr-3 py-1.5 rounded-md border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400 focus:border-orange-500 appearance-none"
-            >
-              <option value="">Filter by Category</option>
-              <option value="status">Status</option>
-              <option value="service">Service</option>
-              <option value="handleBy">Handled By</option>
-              <option value="mode">Mode</option>
-              <option value="expert">Expert</option>
-            </select>
-          </div>
-
-          {categoryKey && (
-            <select
-              value={categoryValue}
-              onChange={(e) => setCategoryValue(e.target.value)}
-              className="px-2 py-1.5 border border-orange-300 rounded-md text-sm"
-            >
-              <option value="">Select {categoryKey}</option>
-              {[...new Set(flattenedRecords.map((r) => r[categoryKey]))]
-                .filter((v) => v)
-                .sort()
-                .map((v) => (
-                  <option key={v} value={v}>
-                    {v}
-                  </option>
-                ))}
-            </select>
-          )}
-        </div>
+        <Filters
+          records={flattenedRecords}
+          dateField="dateOfPayment"
+          categoryOptionsConfig={categoryOptionsConfig}
+          onFilter={(filtered) => {
+            // Update the filtered records whenever the Filters component changes
+            setFilteredRecords(filtered);
+            if (setPage) setPage(1);
+          }}
+        />
       </div>
 
       <div className="relative">

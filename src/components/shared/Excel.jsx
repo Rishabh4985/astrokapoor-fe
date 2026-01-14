@@ -233,7 +233,12 @@ const Excel = ({ onImport, onExport }) => {
 
       const filterAndMapRecords = (category) => {
         return records
-          .filter((record) => record.category === category)
+          .filter(
+            (record) =>
+              (record.category || "").toString().trim().toLowerCase() ===
+              category
+          )
+
           .map((record) => {
             const mapped = {};
             // Object.entries(record).forEach(([key, value]) => {

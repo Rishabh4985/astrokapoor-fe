@@ -30,6 +30,7 @@ import {
   nonEditableFields,
 } from "../../components/shared/Dropdown";
 import { Country, State } from "country-state-city";
+import Filters from "../../components/shared/Filters";
 
 const AdminSalesRecordList = ({ onFilter }) => {
   const countryOptions = useMemo(
@@ -49,11 +50,8 @@ const AdminSalesRecordList = ({ onFilter }) => {
     clearError,
   } = useContext(AdminContext);
 
-  const [query, setQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterValue, setFilterValue] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("all");
-  const [selectedCategory, setSelectedCategory] = useState("");
+  const [filteredRecords, setFilteredRecords] = useState([]);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
@@ -213,81 +211,12 @@ const AdminSalesRecordList = ({ onFilter }) => {
       !hiddenFields.includes(key)
   );
 
-  const isRecordInDateRange = useCallback(
-    (recordDateStr) => {
-      if (!filterType || filterType === "all" || !filterValue) return true;
-      const recordDate = new Date(recordDateStr);
-      if (isNaN(recordDate)) return false;
-
-      switch (filterType) {
-        case "date": {
-          const selected = new Date(filterValue);
-          return (
-            recordDate.getFullYear() === selected.getFullYear() &&
-            recordDate.getMonth() === selected.getMonth() &&
-            recordDate.getDate() === selected.getDate()
-          );
-        }
-        case "week": {
-          const [year, weekNumber] = filterValue.split("-W");
-          const firstDayOfYear = new Date(year, 0, 1);
-          const days = (parseInt(weekNumber) - 1) * 7;
-          const weekStart = new Date(
-            firstDayOfYear.setDate(firstDayOfYear.getDate() + days)
-          );
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-          return recordDate >= weekStart && recordDate <= weekEnd;
-        }
-        case "month": {
-          const [year, month] = filterValue.split("-");
-          return (
-            recordDate.getFullYear() === parseInt(year) &&
-            recordDate.getMonth() === parseInt(month) - 1
-          );
-        }
-        case "year":
-          return recordDate.getFullYear() === parseInt(filterValue);
-        default:
-          return true;
-      }
-    },
-    [filterType, filterValue]
-  );
-
-  const filteredRecords = useMemo(() => {
-    return flattenedRecords.filter((record) => {
-      const matchesQuery = Object.values(record).some((val) =>
-        String(val || "")
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      );
-      const matchesDate = isRecordInDateRange(record.dateOfPayment);
-      const matchesCategory =
-        categoryFilter === "all" || selectedCategory === ""
-          ? true
-          : String(record[categoryFilter] || "").toLowerCase() ===
-            selectedCategory.toLowerCase();
-      return matchesQuery && matchesDate && matchesCategory;
-    });
-  }, [
-    flattenedRecords,
-    query,
-    categoryFilter,
-    selectedCategory,
-    isRecordInDateRange,
-  ]);
-
   // ============== PAGINATION ==============
   const totalPagesCalc = Math.ceil(filteredRecords.length / itemsPerPage);
   const currentPageRecords = useMemo(() => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredRecords.slice(start, start + itemsPerPage);
   }, [filteredRecords, currentPage, itemsPerPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [query, filterType, filterValue, categoryFilter, selectedCategory]);
 
   const startEdit = (record) => {
     setEditingId(record._id);
@@ -392,7 +321,12 @@ const AdminSalesRecordList = ({ onFilter }) => {
   };
 
   const handleExport = () => {
-    toast.success(`Exporting ${filteredRecords.length} filtered records`);
+    if (!filteredRecords || filteredRecords.length === 0) {
+      toast.warning("No records available to export");
+      return null; // ⬅️ CRITICAL
+    }
+
+    toast.success(`Exporting ${filteredRecords.length} records`);
     return filteredRecords;
   };
 
@@ -407,6 +341,15 @@ const AdminSalesRecordList = ({ onFilter }) => {
     }
   }, [error, clearError]);
 
+  useEffect(() => {
+    setFilteredRecords(flattenedRecords);
+  }, [flattenedRecords]);
+
+  const handleFilter = useCallback((records) => {
+    setFilteredRecords(records);
+    setCurrentPage(1);
+  }, []);
+
   return (
     <div className="p-6 bg-white rounded-2xl shadow-lg mb-8 border border-orange-100">
       {/* HEADER */}
@@ -417,117 +360,26 @@ const AdminSalesRecordList = ({ onFilter }) => {
             ({filteredRecords.length} of {flattenedRecords.length} records)
           </span>
         </h2>
-        <Excel onImport={handleImport} onExport={handleExport} />
+        <Excel
+          onImport={handleImport}
+          onExport={filteredRecords.length ? handleExport : null}
+        />
       </div>
 
       {/* FILTERS */}
       <div className="bg-orange-50 border border-orange-100 rounded-xl p-4 mb-6">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap gap-4">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search across all records..."
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-            />
-          </div>
-
-          <div className="relative">
-            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <select
-              value={filterType}
-              onChange={(e) => {
-                setFilterType(e.target.value);
-                setFilterValue("");
-              }}
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-            >
-              <option value="all">All Dates</option>
-              <option value="date">By Date</option>
-              <option value="week">By Week</option>
-              <option value="month">By Month</option>
-              <option value="year">By Year</option>
-            </select>
-          </div>
-
-          {["date", "week", "month"].includes(filterType) && (
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-              <input
-                type={filterType}
-                value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-              />
-            </div>
-          )}
-
-          {filterType === "year" && (
-            <div className="relative">
-              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-              <select
-                value={filterValue}
-                onChange={(e) => setFilterValue(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-              >
-                <option value="">Select Year</option>
-                {Array.from(
-                  { length: new Date().getFullYear() - 1969 },
-                  (_, i) => {
-                    const year = new Date().getFullYear() - i;
-                    return (
-                      <option key={year} value={year}>
-                        {year}
-                      </option>
-                    );
-                  }
-                )}
-              </select>
-            </div>
-          )}
-
-          {/* Category Filter */}
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-            <select
-              value={categoryFilter}
-              onChange={(e) => {
-                setCategoryFilter(e.target.value);
-                setSelectedCategory("");
-              }}
-              className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-            >
-              <option value="all">All Categories</option>
-              <option value="status">Status</option>
-              <option value="service">Service</option>
-              <option value="handleBy">Handled By</option>
-              <option value="mode">Mode</option>
-              <option value="category">Category</option>
-            </select>
-          </div>
-
-          {/* Category Value */}
-          {categoryFilter !== "all" && (
-            <div className="relative">
-              <Tags className="absolute left-3 top-1/2 -translate-y-1/2 text-orange-600 w-4 h-4" />
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-400"
-              >
-                <option value="">Select {getFieldLabel(categoryFilter)}</option>
-                {getDropdownOptionsForField(categoryFilter).map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-        </div>
+        <Filters
+          records={flattenedRecords}
+          dateField="dateOfPayment"
+          onFilter={handleFilter}
+          categoryOptionsConfig={[
+            { key: "status", label: "Status" },
+            { key: "service", label: "Service" },
+            { key: "handleBy", label: "Handled By" },
+            { key: "mode", label: "Mode" },
+            { key: "expert", label: "Expert" },
+          ]}
+        />
       </div>
 
       {/* TABLE */}

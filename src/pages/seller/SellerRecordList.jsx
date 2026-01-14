@@ -2,20 +2,7 @@ import React, { useContext, useEffect, useState, useMemo } from "react";
 import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
-import {
-  Search,
-  Filter,
-  ClipboardEdit,
-  Globe,
-  UserCheck,
-  Send,
-  XCircle,
-  Table2,
-  AlertCircle,
-  History,
-  ChevronUp,
-  ChevronDown,
-} from "lucide-react";
+import { Table2, AlertCircle, ChevronUp, ChevronDown } from "lucide-react";
 import { Country, State } from "country-state-city";
 import {
   dropdownOptions,
@@ -25,13 +12,14 @@ import {
   nonEditableFields,
   hiddenFields,
 } from "../../components/shared/Dropdown.js";
+import Filters from "../../components/shared/Filters.jsx";
 
 const statusOptions = dropdownOptions.status;
 const categoryOptions = dropdownOptions.category;
 const serviceOptions = dropdownOptions.service;
 const modeOptions = dropdownOptions.mode;
 
-const SellerRecordList = ({ onFilter }) => {
+const SellerRecordList = () => {
   const countryOptions = useMemo(
     () => Country.getAllCountries().map((c) => c.name),
     []
@@ -42,7 +30,6 @@ const SellerRecordList = ({ onFilter }) => {
   );
   const { sellerRecords, updateSellerRecord, getRecordHistory } =
     useContext(SellerContext);
-  const [query, setQuery] = useState("");
   const [editingId, setEditingId] = useState(null); // use id instead of index
   const [editedRecord, setEditedRecord] = useState({});
   const [validationErrors, setValidationErrors] = useState({});
@@ -63,13 +50,6 @@ const SellerRecordList = ({ onFilter }) => {
       .join(" ");
   };
 
-  const [filters, setFilters] = useState({
-    status: "",
-    service: "",
-    country: "",
-    expert: "",
-    mode: "",
-  });
   const formatDateOnly = (value) => {
     if (!value) return "-";
 
@@ -97,25 +77,7 @@ const SellerRecordList = ({ onFilter }) => {
   const visibleRecords = useMemo(() => {
     return Array.isArray(sellerRecords) ? sellerRecords : [];
   }, [sellerRecords]);
-
-  const filteredRecords = useMemo(() => {
-    return visibleRecords.filter((record) => {
-      const matchesQuery = Object.values(record).some((val) =>
-        String(val || "")
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      );
-
-      const matchesFilters = Object.entries(filters).every(([key, value]) => {
-        if (!value) return true;
-        const recordVal = record[key];
-        if (recordVal === null || recordVal === undefined) return false;
-        return String(recordVal).toLowerCase() === value.toLowerCase();
-      });
-
-      return matchesQuery && matchesFilters;
-    });
-  }, [visibleRecords, query, filters]);
+  const [filteredRecords, setFilteredRecords] = useState([]);
 
   const totalPages = Math.max(
     1,
@@ -126,14 +88,6 @@ const SellerRecordList = ({ onFilter }) => {
     const start = (currentPage - 1) * itemsPerPage;
     return filteredRecords.slice(start, start + itemsPerPage);
   }, [filteredRecords, itemsPerPage, currentPage]);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [query, filters]);
-
-  useEffect(() => {
-    if (onFilter) onFilter(filteredRecords);
-  }, [filteredRecords, onFilter]);
 
   const dynamicHeaders = visibleRecords.reduce((set, record) => {
     Object.keys(record).forEach((key) => set.add(key));
@@ -339,25 +293,23 @@ const SellerRecordList = ({ onFilter }) => {
     }
   };
 
-  const getUniqueValues = (key) => {
-    if (!visibleRecords?.length) return [];
-    const set = new Set();
-    visibleRecords.forEach((r) => {
-      let v = r[key];
-      if (v === null || v === undefined || v === "") return;
-      if (key === "category" || key === "service") {
-        v = String(v).toLowerCase().trim();
-      }
-      set.add(v);
-    });
-    return Array.from(set);
-  };
-
   const startRecord = (currentPage - 1) * itemsPerPage + 1;
   const endRecord = Math.min(
     currentPage * itemsPerPage,
     filteredRecords.length
   );
+
+  useEffect(() => {
+    setFilteredRecords(visibleRecords);
+  }, [visibleRecords]);
+
+  const categoryOptionsConfig = [
+    { key: "status", label: "Status" },
+    { key: "service", label: "Service" },
+    { key: "country", label: "Country" },
+    { key: "expert", label: "Expert" },
+    { key: "mode", label: "Mode" },
+  ];
 
   return (
     <div className="bg-white rounded-2xl shadow-lg mb-8 p-6 border border-orange-100 space-y-4">
@@ -374,147 +326,12 @@ const SellerRecordList = ({ onFilter }) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <input
-            type="text"
-            placeholder="Search across all records..."
-            value={query || ""}
-            onChange={(e) => setQuery(e.target.value)}
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          />
-          {query && (
-            <XCircle
-              className="absolute right-2 top-2.5 w-4 h-4 text-orange-300 cursor-pointer"
-              onClick={() => setQuery("")}
-            />
-          )}
-        </div>
-
-        <div className="relative">
-          <Filter className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <select
-            value={filters.status}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, status: e.target.value }))
-            }
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          >
-            <option value="">{headerLabels.status}</option>
-            {getUniqueValues("status").map((val, idx) => (
-              <option
-                key={`status-${String(val).toLowerCase().trim()}-${idx}`}
-                value={val}
-              >
-                {val}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="relative">
-          <ClipboardEdit className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <select
-            value={filters.service}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, service: e.target.value }))
-            }
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          >
-            <option value="">{headerLabels.service}</option>
-            {getUniqueValues("service").map((val, idx) => (
-              <option
-                key={`service-${String(val).toLowerCase().trim()}-${idx}`}
-                value={val}
-              >
-                {val}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="relative">
-          <Globe className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <select
-            value={filters.country}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, country: e.target.value }))
-            }
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          >
-            <option value="">{headerLabels.country}</option>
-            {getUniqueValues("country").map((val, idx) => (
-              <option
-                key={`country-${String(val).toLowerCase().trim()}-${idx}`}
-                value={val}
-              >
-                {val}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="relative">
-          <UserCheck className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <select
-            value={filters.expert}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, expert: e.target.value }))
-            }
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          >
-            <option value="">{headerLabels.expert}</option>
-            {getUniqueValues("expert").map((val, idx) => (
-              <option
-                key={`expert-${String(val).toLowerCase().trim()}-${idx}`}
-                value={val}
-              >
-                {val}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="relative">
-          <Send className="absolute left-2 top-2.5 w-4 h-4 text-orange-400" />
-          <select
-            value={filters.mode}
-            onChange={(e) =>
-              setFilters((prev) => ({ ...prev, mode: e.target.value }))
-            }
-            className="pl-8 pr-3 py-2 border border-orange-300 rounded-md text-sm w-full"
-          >
-            <option value="">{headerLabels.mode}</option>
-            {getUniqueValues("mode").map((val, idx) => (
-              <option
-                key={`mode-${String(val).toLowerCase().trim()}-${idx}`}
-                value={val}
-              >
-                {val}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      <div className="flex justify-end">
-        <button
-          onClick={() => {
-            setQuery("");
-            setFilters({
-              status: "",
-              service: "",
-              country: "",
-              expert: "",
-              mode: "",
-            });
-          }}
-          className="text-sm text-orange-600 hover:underline"
-        >
-          Clear All Filters
-        </button>
-      </div>
+      <Filters
+        records={visibleRecords}
+        dateField="dateOfPayment"
+        categoryOptionsConfig={categoryOptionsConfig}
+        onFilter={setFilteredRecords}
+      />
 
       <div className="relative">
         <div className="overflow-auto max-h-[600px] min-h-[300px] border border-orange-300 rounded-lg">

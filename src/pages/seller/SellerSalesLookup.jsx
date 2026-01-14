@@ -1,35 +1,18 @@
-import React, {
-  useState,
-  useEffect,
-  useContext,
-  useMemo,
-  useCallback,
-} from "react";
+import React, { useState, useContext, useMemo, useCallback } from "react";
 import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
-import {
-  Search,
-  Calendar,
-  Filter,
-  Table2,
-  PackageCheck,
-  X,
-} from "lucide-react";
+import { Table2 } from "lucide-react";
 import {
   expectedHeaders,
   headerLabels,
 } from "../../components/shared/Dropdown.js";
+import Filters from "../../components/shared/Filters.jsx";
 
-const SellerSalesLookup = ({ onFilter }) => {
+const SellerSalesLookup = () => {
   const { sellerRecords, importSellerRecords } = useContext(SellerContext);
-  const [query, setQuery] = useState("");
-  const [filterType, setFilterType] = useState("all");
-  const [filterValue, setFilterValue] = useState("");
-  const [categoryKey, setCategoryKey] = useState("");
-  const [categoryValue, setCategoryValue] = useState("");
+  const [filteredRecords, setFilteredRecords] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
-  const [category, setCategory] = useState("all");
   const itemsPerPage = 100;
 
   const nonCapitalizedFields = ["email1", "email2", "handlerId"];
@@ -125,79 +108,6 @@ const SellerSalesLookup = ({ onFilter }) => {
     return value;
   };
 
-  const isRecordInDateRange = useCallback(
-    (recordDateStr) => {
-      if (!filterType || filterType === "all" || !filterValue) return true;
-      const recordDate = new Date(recordDateStr);
-      if (isNaN(recordDate)) return false;
-
-      switch (filterType) {
-        case "date": {
-          const selected = new Date(filterValue);
-          return (
-            recordDate.getFullYear() === selected.getFullYear() &&
-            recordDate.getMonth() === selected.getMonth() &&
-            recordDate.getDate() === selected.getDate()
-          );
-        }
-        case "week": {
-          const [year, weekNumber] = filterValue.split("-W");
-          const firstDayOfYear = new Date(year, 0, 1);
-          const days = (parseInt(weekNumber) - 1) * 7;
-          const weekStart = new Date(
-            firstDayOfYear.setDate(firstDayOfYear.getDate() + days)
-          );
-          const weekEnd = new Date(weekStart);
-          weekEnd.setDate(weekStart.getDate() + 6);
-          return recordDate >= weekStart && recordDate <= weekEnd;
-        }
-        case "month": {
-          const [year, month] = filterValue.split("-");
-          return (
-            recordDate.getFullYear() === parseInt(year) &&
-            recordDate.getMonth() === parseInt(month) - 1
-          );
-        }
-        case "year":
-          return recordDate.getFullYear() === parseInt(filterValue);
-        default:
-          return true;
-      }
-    },
-    [filterType, filterValue]
-  );
-
-  const filteredRecords = useMemo(() => {
-    return flattenedRecords.filter((record) => {
-      const matchesQuery = Object.values(record).some((val) =>
-        String(val || "")
-          .toLowerCase()
-          .includes(query.toLowerCase())
-      );
-      const matchesDate = isRecordInDateRange(record.dateOfPayment);
-
-      const matchesCategory =
-        category === "all" ? true : record.category === category;
-
-      const matchesExtraCategory =
-        !categoryKey || !categoryValue
-          ? true
-          : String(record[categoryKey] || "").toLowerCase() ===
-            categoryValue.toLowerCase();
-
-      return (
-        matchesQuery && matchesDate && matchesCategory && matchesExtraCategory
-      );
-    });
-  }, [
-    flattenedRecords,
-    query,
-    category,
-    categoryKey,
-    categoryValue,
-    isRecordInDateRange,
-  ]);
-
   const totalPages = Math.ceil(filteredRecords.length / itemsPerPage);
 
   const paginatedRecords = useMemo(() => {
@@ -205,9 +115,11 @@ const SellerSalesLookup = ({ onFilter }) => {
     return filteredRecords.slice(start, start + itemsPerPage);
   }, [filteredRecords, currentPage]);
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [query, categoryKey, categoryValue, category]);
+  const startRecord = (currentPage - 1) * itemsPerPage + 1;
+  const endRecord = Math.min(
+    currentPage * itemsPerPage,
+    filteredRecords.length
+  );
 
   const handleImport = useCallback(
     (importedData) => {
@@ -222,37 +134,10 @@ const SellerSalesLookup = ({ onFilter }) => {
     return filteredRecords;
   }, [filteredRecords]);
 
-  useEffect(() => {
-    if (onFilter) onFilter(filteredRecords);
-  }, [filteredRecords, onFilter]);
-
-  const getCategoryOptions = useMemo(() => {
-    if (!categoryKey || !flattenedRecords.length) return [];
-    return [
-      ...new Set(
-        flattenedRecords
-          .map((r) => r[categoryKey])
-          .filter((v) => v !== undefined && v !== null && v !== "")
-      ),
-    ].sort();
-  }, [flattenedRecords, categoryKey]);
-
-  const clearAllFilters = () => {
-    setQuery("");
-    setFilterType("all");
-    setFilterValue("");
-    setCategoryKey("");
-    setCategoryValue("");
-    setCategory("all");
-  };
-
-  const hasActiveFilters =
-    query || filterType !== "all" || categoryKey || category !== "all";
-  const startRecord = (currentPage - 1) * itemsPerPage + 1;
-  const endRecord = Math.min(
-    currentPage * itemsPerPage,
-    filteredRecords.length
-  );
+  const handleFilter = useCallback((records) => {
+    setFilteredRecords(records);
+    setCurrentPage(1);
+  }, []);
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 py-6">
@@ -275,166 +160,19 @@ const SellerSalesLookup = ({ onFilter }) => {
           </div>
         </div>
 
-        <div className="p-4 sm:p-6 bg-orange-50/50 border-b border-orange-200">
-          <div className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-600 w-4 h-4" />
-              <input
-                type="text"
-                className="w-full pl-10 pr-4 py-3 rounded-lg border border-orange-300 text-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500 bg-white"
-                placeholder="Search across all records..."
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* Date Filter */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-orange-700">
-                  <Calendar className="w-4 h-4" />
-                  Date Filter
-                </label>
-                <select
-                  value={filterType}
-                  onChange={(e) => {
-                    setFilterType(e.target.value);
-                    setFilterValue("");
-                  }}
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white"
-                >
-                  <option value="all">All Dates</option>
-                  <option value="date">By Date</option>
-                  <option value="week">By Week</option>
-                  <option value="month">By Month</option>
-                  <option value="year">By Year</option>
-                </select>
-
-                {filterType === "date" && (
-                  <input
-                    type="date"
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white mt-2"
-                  />
-                )}
-
-                {filterType === "week" && (
-                  <input
-                    type="week"
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white mt-2"
-                  />
-                )}
-
-                {filterType === "month" && (
-                  <input
-                    type="month"
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white mt-2"
-                  />
-                )}
-
-                {filterType === "year" && (
-                  <select
-                    value={filterValue}
-                    onChange={(e) => setFilterValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white mt-2"
-                  >
-                    <option value="">Select Year</option>
-                    {Array.from({ length: 15 }, (_, i) => {
-                      const year = new Date().getFullYear() - i;
-                      return (
-                        <option key={year} value={year}>
-                          {year}
-                        </option>
-                      );
-                    })}
-                  </select>
-                )}
-              </div>
-
-              {/* Category Filter */}
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-orange-700">
-                  <PackageCheck className="w-4 h-4" />
-                  Category
-                </label>
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white"
-                >
-                  <option value="all">All Categories</option>
-                  <option value="Gemstones">Gemstones</option>
-                  <option value="Consultation">Consultation</option>
-                  <option value="Products">Products</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="flex items-center gap-2 text-sm font-medium text-orange-700">
-                  <Filter className="w-4 h-4" />
-                  Filter Type
-                </label>
-                <select
-                  value={categoryKey}
-                  onChange={(e) => {
-                    setCategoryKey(e.target.value);
-                    setCategoryValue("");
-                  }}
-                  className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white"
-                >
-                  <option value="">Select Filter</option>
-                  <option value="status">Status</option>
-                  <option value="service">Service</option>
-                  <option value="handleBy">Handled By</option>
-                  <option value="mode">Mode</option>
-                  <option value="expert">Expert</option>
-                </select>
-              </div>
-
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-orange-700">
-                  Filter Value
-                </label>
-                {categoryKey ? (
-                  <select
-                    value={categoryValue}
-                    onChange={(e) => setCategoryValue(e.target.value)}
-                    className="w-full px-3 py-2 border border-orange-300 rounded-lg text-sm focus:ring-2 focus:ring-orange-500 bg-white"
-                  >
-                    <option value="">Select {categoryKey}</option>
-                    {getCategoryOptions.map((v) => (
-                      <option key={v} value={v}>
-                        {v}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <div className="w-full px-3 py-2 border border-orange-200 rounded-lg text-sm bg-gray-100 text-gray-500 flex items-center justify-center">
-                    Select filter type first
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Clear Filters Button */}
-            {hasActiveFilters && (
-              <div className="flex justify-center pt-2">
-                <button
-                  onClick={clearAllFilters}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-sm text-orange-600 hover:text-orange-800 hover:bg-orange-100 rounded-lg transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                  Clear All Filters
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Filters */}
+        <Filters
+          records={flattenedRecords}
+          dateField="dateOfPayment"
+          onFilter={handleFilter}
+          categoryOptionsConfig={[
+            { key: "status", label: "Status" },
+            { key: "service", label: "Service" },
+            { key: "handleBy", label: "Handled By" },
+            { key: "mode", label: "Mode" },
+            { key: "expert", label: "Expert" },
+          ]}
+        />
 
         {/* Table Section */}
         <div className="relative p-4 sm:p-6">
