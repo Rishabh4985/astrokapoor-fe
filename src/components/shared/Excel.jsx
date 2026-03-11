@@ -7,6 +7,8 @@ import { useAuth } from "../../context/AuthContext";
 import { Upload, FileDown } from "lucide-react";
 import axios from "axios";
 
+const API_BASE = import.meta.env.VITE_API_URL;
+
 const Excel = ({ onImport, onExport }) => {
   const { currentSeller, isAdmin } = useAuth();
   const adminContext = useContext(AdminContext);
@@ -67,22 +69,18 @@ const Excel = ({ onImport, onExport }) => {
   };
 
   const uploadRecordsToBackend = async (records) => {
-    const chunkSize = 100; // smaller chunks
+    const chunkSize = 100;
     const token = localStorage.getItem("authToken");
 
     for (let i = 0; i < records.length; i += chunkSize) {
       const chunk = records.slice(i, i + chunkSize);
       try {
-        const API_BASE = import.meta.env.DEV
-          ? ""
-          : import.meta.env.VITE_API_URL;
-
         await axios.post(
-          `${API_BASE}/api/admin/import-records`,
+          `${API_BASE}/admin/import-records`,
           { records: chunk },
           {
             headers: { Authorization: `Bearer ${token}` },
-          }
+          },
         );
 
         toast.info(`Uploaded records ${i + 1} to ${i + chunk.length}`);
@@ -122,7 +120,7 @@ const Excel = ({ onImport, onExport }) => {
             const headers = rawHeaders.map(
               (h) =>
                 headerMap[h.trim()] ||
-                h.trim().replace(/\s+/g, "").toLowerCase()
+                h.trim().replace(/\s+/g, "").toLowerCase(),
             );
 
             const records = sheet.slice(1).map((row) => {
@@ -156,15 +154,19 @@ const Excel = ({ onImport, onExport }) => {
                   value = isNaN(parsed) ? 0 : parsed;
                 }
 
+                if (key === "country") {
+                  value = value.toString().trim().toLowerCase();
+                }
+
                 if (key === "service") {
                   value = normalizeService(value);
                 }
                 obj[key] = value;
               });
-              obj.category = (obj.category || sheetName || "")
-                .toString()
-                .trim()
-                .toLowerCase();
+              obj.category =
+                sheetName.charAt(0).toUpperCase() +
+                sheetName.slice(1).toLowerCase();
+
               return obj;
             });
 
@@ -196,7 +198,7 @@ const Excel = ({ onImport, onExport }) => {
 
               if (sellerRecords.length === 0) {
                 toast.warn(
-                  "No valid records found for your account in the uploaded file."
+                  "No valid records found for your account in the uploaded file.",
                 );
                 return;
               }
@@ -204,7 +206,6 @@ const Excel = ({ onImport, onExport }) => {
               sellerContext.importSellerRecords(sellerRecords);
             }
 
-            // sessionStorage.setItem("userList", JSON.stringify(sortedRecords));
             toast.success("Excel imported successfully!");
             uploadRecordsToBackend(sortedRecords);
           }
@@ -228,7 +229,7 @@ const Excel = ({ onImport, onExport }) => {
           acc[fieldName] = excelHeader;
           return acc;
         },
-        {}
+        {},
       );
 
       const filterAndMapRecords = (category) => {
@@ -236,15 +237,11 @@ const Excel = ({ onImport, onExport }) => {
           .filter(
             (record) =>
               (record.category || "").toString().trim().toLowerCase() ===
-              category
+              category,
           )
 
           .map((record) => {
             const mapped = {};
-            // Object.entries(record).forEach(([key, value]) => {
-            //   const excelKey = reverseHeaderMap[key] || key;
-            //   mapped[excelKey] = value;
-            // });
 
             allowedFields.forEach((field) => {
               if (record[field] !== undefined) {
@@ -271,7 +268,7 @@ const Excel = ({ onImport, onExport }) => {
           XLSX.utils.book_append_sheet(
             workbook,
             worksheet,
-            sheetNameMap[category]
+            sheetNameMap[category],
           );
         }
       });

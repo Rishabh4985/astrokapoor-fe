@@ -13,12 +13,13 @@ const ManageSalesPerson = () => {
   const [loading, setLoading] = useState(false);
 
   const token = localStorage.getItem("authToken");
-  const API_URL = import.meta.env.VITE_API_URL;
+
+  const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchSalespersons = useCallback(async () => {
     try {
       setLoading(true);
-      const { data } = await axios.get(`${API_URL}/admin/sellers`, {
+      const { data } = await axios.get(`${API_BASE}/admin/sellers`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (Array.isArray(data)) {
@@ -35,26 +36,26 @@ const ManageSalesPerson = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, API_URL]);
+  }, [token, API_BASE]);
 
   useEffect(() => {
     fetchSalespersons();
   }, [fetchSalespersons]);
 
   const handleAdd = async () => {
-    if (!firstName || !lastName || !email || !password) {
+    if (!firstName || !email || !password) {
       return toast.error("All fields are required.");
     }
 
     const payload = {
       firstName: firstName.trim(),
-      lastName: lastName.trim(),
       email: email.trim(),
       password,
+      ...(lastName.trim() && { lastName: lastName.trim() }),
     };
 
     try {
-      await axios.post(`${API_URL}/admin/sellers`, payload, {
+      await axios.post(`${API_BASE}/admin/sellers`, payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -75,7 +76,7 @@ const ManageSalesPerson = () => {
       return;
 
     try {
-      await axios.delete(`${API_URL}/admin/sellers/${id}`, {
+      await axios.delete(`${API_BASE}/admin/sellers/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       toast.success("Salesperson deleted.");
@@ -91,11 +92,11 @@ const ManageSalesPerson = () => {
 
     try {
       await axios.patch(
-        `${API_URL}/admin/sellers/${id}`,
+        `${API_BASE}/admin/sellers/${id}`,
         { password: newPassword },
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       toast.success("Password updated.");
       fetchSalespersons();
@@ -153,31 +154,31 @@ const ManageSalesPerson = () => {
                       label === "Password"
                         ? "password"
                         : label === "Email"
-                        ? "email"
-                        : "text"
+                          ? "email"
+                          : "text"
                     }
                     value={
                       i === 0
                         ? firstName
                         : i === 1
-                        ? lastName
-                        : i === 2
-                        ? email
-                        : password
+                          ? lastName
+                          : i === 2
+                            ? email
+                            : password
                     }
                     onChange={(e) =>
                       i === 0
                         ? setFirstName(e.target.value)
                         : i === 1
-                        ? setLastName(e.target.value)
-                        : i === 2
-                        ? setEmail(e.target.value)
-                        : setPassword(e.target.value)
+                          ? setLastName(e.target.value)
+                          : i === 2
+                            ? setEmail(e.target.value)
+                            : setPassword(e.target.value)
                     }
                     className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
                 </div>
-              )
+              ),
             )}
 
             <button

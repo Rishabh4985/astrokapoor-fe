@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { User, LogOut, Menu, X } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
+import { User, LogOut, Menu, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
   const navigate = useNavigate();

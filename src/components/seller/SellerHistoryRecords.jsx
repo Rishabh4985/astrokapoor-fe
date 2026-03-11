@@ -6,7 +6,7 @@ const SellerHistoryRecords = ({
   headers,
   history = [],
   loading = false,
-  formatDateOnly,
+  formatDate,
 }) => {
   if (loading) {
     return (
@@ -70,11 +70,11 @@ const SellerHistoryRecords = ({
                           {change.fieldLabel || change.field}
                         </span>
                         <span className="text-red-500 line-through">
-                          {formatDateOnly(change.oldValue)}
+                          {formatDate(change.oldValue)}
                         </span>
                         <span className="text-gray-400">→</span>
                         <span className="text-green-700 font-semibold">
-                          {formatDateOnly(change.newValue)}
+                          {formatDate(change.newValue)}
                         </span>
                       </li>
                     ))}

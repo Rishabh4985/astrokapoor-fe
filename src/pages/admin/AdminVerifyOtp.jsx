@@ -2,9 +2,7 @@ import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
 
-const API_BASE = import.meta.env.DEV
-  ? "http://localhost:4000/api"
-  : import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const AdminVerifyOtp = () => {
   const { state } = useLocation();

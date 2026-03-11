@@ -2,9 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Camera, Lock, Mail, User } from "lucide-react";
 import axios from "axios";
 
-const API_BASE = import.meta.env.DEV
-  ? "http://localhost:4000/api"
-  : import.meta.env.VITE_API_URL;
+const API_BASE = import.meta.env.VITE_API_URL;
 
 const api = axios.create({
   baseURL: API_BASE,
@@ -68,7 +66,7 @@ const AdminProfile = () => {
         await api.patch(
           "/admin/update-password",
           { currentPassword, newPassword },
-          { headers: { Authorization: `Bearer ${token}` } }
+          { headers: { Authorization: `Bearer ${token}` } },
         );
         setMessage("Password updated successfully.");
       }
@@ -76,7 +74,7 @@ const AdminProfile = () => {
       const res = await api.patch(
         "/admin/me",
         { name },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` } },
       );
       setAdminData(res.data);
       setMessage("Profile updated successfully.");

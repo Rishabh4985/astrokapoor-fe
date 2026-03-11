@@ -4,9 +4,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { useAuth } from "./AuthContext";
 
-const API_BASE = import.meta.env.DEV
-  ? "http://localhost:4000/api/seller"
-  : `${import.meta.env.VITE_API_URL}/seller`;
+const API_BASE = `${import.meta.env.VITE_API_URL}/seller`;
 
 const formatDate = (date) => {
   if (!date) return "";
@@ -22,13 +20,13 @@ const SellerProvider = ({ children }) => {
   const { authToken, currentSeller } = useAuth();
 
   const [sellerRecords, setSellerRecords] = useState([]);
-  const [allRecords, setAllRecords] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(500);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [loadingCharts, setLoadingCharts] = useState(false);
+  const [filters, setFilters] = useState({});
+
+  const limit = 100;
 
   const [chartData, setChartData] = useState({
     "monthly-sales": {
@@ -51,12 +49,6 @@ const SellerProvider = ({ children }) => {
     },
   });
 
-  const chartDataRef = useRef(chartData);
-
-  useEffect(() => {
-    chartDataRef.current = chartData;
-  }, [chartData]);
-
   const isMountedRef = useRef(true);
 
   useEffect(() => {
@@ -65,16 +57,6 @@ const SellerProvider = ({ children }) => {
       isMountedRef.current = false;
     };
   }, []);
-
-  const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-
-  const isDataStale = useCallback(
-    (lastFetched) => {
-      if (!lastFetched) return true;
-      return Date.now() - lastFetched > CACHE_DURATION;
-    },
-    [CACHE_DURATION]
-  );
 
   const cleanRecord = useCallback((record) => {
     const omitKeys = (obj, keys) => {
@@ -92,92 +74,61 @@ const SellerProvider = ({ children }) => {
   }, []);
 
   const fetchRecords = useCallback(
-    async (pageNumber = 1) => {
+    async (pageNumber = 1, appliedFilters = {}) => {
       if (!authToken) return;
+
       try {
         setLoading(true);
 
+        const params = new URLSearchParams({
+          page: pageNumber,
+          limit,
+        });
+
+        Object.entries(appliedFilters).forEach(([key, value]) => {
+          if (!value || value === "all") return;
+
+          params.append(
+            key === "query" ? "search" : key,
+            value.toString().trim(),
+          );
+        });
+
         const res = await axios.get(
-          `${API_BASE}/records/handler?page=${pageNumber}&limit=${limit}`,
+          `${API_BASE}/records/handler?${params.toString()}`,
           {
             headers: { Authorization: `Bearer ${authToken}` },
-          }
+          },
         );
 
         const dataArray = Array.isArray(res.data.records)
           ? res.data.records
           : Array.isArray(res.data)
-          ? res.data
-          : [];
+            ? res.data
+            : [];
 
         const cleanedData = dataArray.map(cleanRecord);
 
-        setSellerRecords((prev) =>
-          pageNumber === 1 ? cleanedData : [...prev, ...cleanedData]
-        );
+        setSellerRecords(cleanedData);
 
         setTotalRecords(res.data.totalRecords || cleanedData.length);
         setTotalPages(
-          res.data.totalPages || Math.ceil((res.data.totalRecords || 0) / limit)
+          res.data.totalPages ||
+            Math.ceil((res.data.totalRecords || 0) / limit),
         );
-        setPage(pageNumber);
-
-        if (pageNumber === 1) {
-          try {
-            sessionStorage.setItem(
-              "userList",
-              JSON.stringify(cleanedData.slice(0, 500))
-            );
-          } catch (e) {
-            console.warn("Skipping sessionStorage cache:", e.message);
-          }
-        }
+        setPage(res.data.page || pageNumber);
       } catch (error) {
         console.log("Failed to fetch data", error);
       } finally {
         setLoading(false);
       }
     },
-    [authToken, limit, cleanRecord]
+    [authToken, limit, cleanRecord],
   );
-
-  const fetchAllRecordsForCharts = useCallback(async () => {
-    try {
-      setLoadingCharts(true);
-      if (!authToken) return;
-
-      const res = await axios.get(`${API_BASE}/charts/records`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-        timeout: 30000,
-      });
-
-      const dataArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.records)
-        ? res.data.records
-        : [];
-
-      const cleanedData = dataArray.map(cleanRecord);
-      setAllRecords(cleanedData);
-    } catch (error) {
-      console.log("Failed to fetch all records for charts", error);
-    } finally {
-      setLoadingCharts(false);
-    }
-  }, [authToken, cleanRecord]);
 
   const fetchChartData = useCallback(
     async (chartType) => {
       if (!authToken) return [];
-
-      const currentChartData = chartDataRef.current[chartType];
-      if (
-        currentChartData &&
-        currentChartData.data.length > 0 &&
-        !isDataStale(currentChartData.lastFetched)
-      ) {
-        return currentChartData.data;
-      }
 
       try {
         setChartData((prev) => ({
@@ -185,7 +136,18 @@ const SellerProvider = ({ children }) => {
           [chartType]: { ...prev[chartType], loading: true, error: null },
         }));
 
-        const response = await axios.get(`${API_BASE}/charts/${chartType}`, {
+        const params = new URLSearchParams();
+        Object.entries(filters).forEach(([key, value]) => {
+          if (value && value !== "all" && value !== "") {
+            params.append(key, value.toString().trim());
+          }
+        });
+
+        const url = params.toString()
+          ? `${API_BASE}/charts/${chartType}?${params.toString()}`
+          : `${API_BASE}/charts/${chartType}`;
+
+        const response = await axios.get(url, {
           headers: { Authorization: `Bearer ${authToken}` },
           timeout: 20000,
         });
@@ -193,8 +155,8 @@ const SellerProvider = ({ children }) => {
         const result = Array.isArray(response.data)
           ? response.data
           : Array.isArray(response.data.records)
-          ? response.data.records
-          : [];
+            ? response.data.records
+            : [];
 
         if (!isMountedRef.current) return [];
 
@@ -225,32 +187,40 @@ const SellerProvider = ({ children }) => {
         return [];
       }
     },
-    [authToken, isDataStale]
+    [authToken, filters],
   );
 
   const fetchMonthlySalesData = useCallback(
     () => fetchChartData("monthly-sales"),
-    [fetchChartData]
+    [fetchChartData],
   );
   const fetchSalesVsRefundData = useCallback(
     () => fetchChartData("sales-vs-refund"),
-    [fetchChartData]
+    [fetchChartData],
   );
   const fetchStatusData = useCallback(
     () => fetchChartData("status-count"),
-    [fetchChartData]
+    [fetchChartData],
   );
 
   const refreshChartData = useCallback(
-    (chartType) => {
-      setChartData((prev) => ({
-        ...prev,
-        [chartType]: { ...prev[chartType], lastFetched: null },
-      }));
-      return fetchChartData(chartType);
-    },
-    [fetchChartData]
+    (chartType) => fetchChartData(chartType),
+    [fetchChartData],
   );
+
+  useEffect(() => {
+    if (!authToken) return;
+
+    fetchMonthlySalesData();
+    fetchSalesVsRefundData();
+    fetchStatusData();
+  }, [
+    filters,
+    authToken,
+    fetchMonthlySalesData,
+    fetchSalesVsRefundData,
+    fetchStatusData,
+  ]);
 
   const clearChartCache = useCallback(() => {
     setChartData({
@@ -276,52 +246,24 @@ const SellerProvider = ({ children }) => {
   }, []);
 
   useEffect(() => {
-    if (!authToken) {
-      console.warn("SellerProvider: authToken not ready yet, skipping fetch");
-      return;
-    }
+    setPage(1);
+  }, [filters]);
 
-    fetchRecords(1);
-    fetchAllRecordsForCharts();
-  }, [authToken, fetchRecords, fetchAllRecordsForCharts]);
+  const filtersString = JSON.stringify(filters);
 
   useEffect(() => {
-    if (!authToken || totalPages <= 1) return;
+    if (!authToken) return;
 
-    const fetchSequentially = async () => {
-      try {
-        let allFetched = [];
-        for (let pageNum = 2; pageNum <= totalPages; pageNum++) {
-          const res = await axios.get(
-            `${API_BASE}/records/handler?page=${pageNum}&limit=${limit}`,
-            {
-              headers: { Authorization: `Bearer ${authToken}` },
-            }
-          );
-
-          const dataArray = Array.isArray(res.data.records)
-            ? res.data.records
-            : [];
-          const cleaned = dataArray.map(cleanRecord);
-
-          allFetched = [...allFetched, ...cleaned];
-        }
-
-        setSellerRecords((prev) => [...prev, ...allFetched]);
-      } catch (err) {
-        console.warn("Background prefetch stopped:", err.message);
-      }
-    };
-
-    fetchSequentially();
-  }, [authToken, totalPages, cleanRecord, limit]);
+    const parsedFilters = JSON.parse(filtersString);
+    fetchRecords(page, parsedFilters);
+  }, [page, authToken, fetchRecords, filtersString]);
 
   const goToPage = useCallback(
     (pageNumber) => {
       if (pageNumber < 1 || pageNumber > totalPages) return;
-      fetchRecords(pageNumber);
+      setPage(pageNumber);
     },
-    [fetchRecords, totalPages]
+    [totalPages],
   );
 
   const importSellerRecords = useCallback(
@@ -351,9 +293,8 @@ const SellerProvider = ({ children }) => {
       });
 
       setSellerRecords((prev) => [...prev, ...ownRecords]);
-      setAllRecords((prev) => [...prev, ...ownRecords]);
     },
-    [currentSeller]
+    [currentSeller],
   );
 
   const addSellerRecord = useCallback(
@@ -381,16 +322,15 @@ const SellerProvider = ({ children }) => {
         const formattedRecord = cleanRecord(savedRecord);
 
         setSellerRecords((prev) => {
-          const updated = [...prev, formattedRecord];
-          return updated.sort(
-            (a, b) => new Date(b.dateOfPayment) - new Date(a.dateOfPayment)
-          );
-        });
+          const parseDate = (str) => {
+            const [day, month, year] = str.split("/");
+            return new Date(`${year}-${month}-${day}`);
+          };
 
-        setAllRecords((prev) => {
           const updated = [...prev, formattedRecord];
+
           return updated.sort(
-            (a, b) => new Date(b.dateOfPayment) - new Date(a.dateOfPayment)
+            (a, b) => parseDate(b.dateOfPayment) - parseDate(a.dateOfPayment),
           );
         });
 
@@ -401,7 +341,7 @@ const SellerProvider = ({ children }) => {
         throw error;
       }
     },
-    [authToken, currentSeller, cleanRecord]
+    [authToken, currentSeller, cleanRecord],
   );
 
   const updateSellerRecord = useCallback(
@@ -439,11 +379,10 @@ const SellerProvider = ({ children }) => {
           cleanPayload,
           {
             headers: { Authorization: `Bearer ${authToken}` },
-          }
+          },
         );
 
-        fetchRecords(page);
-        fetchAllRecordsForCharts();
+        fetchRecords(page, filters);
         toast.success("Record updated successfully");
         return response;
       } catch (err) {
@@ -451,7 +390,7 @@ const SellerProvider = ({ children }) => {
         throw err;
       }
     },
-    [authToken, page, fetchRecords, fetchAllRecordsForCharts]
+    [authToken, page, fetchRecords, filters],
   );
 
   const updateSellerProfile = useCallback((updatedSeller) => {
@@ -459,63 +398,39 @@ const SellerProvider = ({ children }) => {
     const allSalespersons =
       JSON.parse(localStorage.getItem("salespersons")) || [];
     const updatedSalespersons = allSalespersons.map((sp) =>
-      sp.email === updatedSeller.email ? updatedSeller : sp
+      sp.email === updatedSeller.email ? updatedSeller : sp,
     );
     localStorage.setItem("salespersons", JSON.stringify(updatedSalespersons));
   }, []);
 
-  const fetchSellerRecords = useCallback(async () => {
-    try {
-      if (!authToken) throw new Error("No Auth Token");
-
-      const res = await axios.get(`${API_BASE}/records/handler`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-
-      const dataArray = Array.isArray(res.data)
-        ? res.data
-        : Array.isArray(res.data.records)
-        ? res.data.records
-        : [];
-
-      const cleanedData = dataArray.map(cleanRecord);
-      setSellerRecords(cleanedData);
-    } catch (error) {
-      console.error("Failed to fetch records", error);
-      throw error;
-    }
-  }, [authToken, cleanRecord]);
-
   const getRecordHistory = useCallback(
     async (recordId) => {
       if (!authToken) throw new Error("No Auth Token");
-      const res = await axios.get(`${API_BASE}/history/${recordId}`, {
+      const res = await axios.get(`${API_BASE}/records/${recordId}/history`, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
       return res.data;
     },
-    [authToken]
+    [authToken],
   );
 
   return (
     <SellerContext.Provider
       value={{
         sellerRecords,
-        allRecords,
+        filters,
+        setFilters,
         totalRecords,
         setSellerRecords,
         setPage,
         page,
         totalPages,
         loading,
-        loadingCharts,
         goToPage,
         importSellerRecords,
         addSellerRecord,
         updateSellerRecord,
         updateSellerProfile,
-        fetchSellerRecords,
-        fetchAllRecordsForCharts,
         fetchRecords,
         getRecordHistory,
 
@@ -526,7 +441,6 @@ const SellerProvider = ({ children }) => {
         fetchStatusData,
         refreshChartData,
         clearChartCache,
-        isDataStale,
       }}
     >
       {children}

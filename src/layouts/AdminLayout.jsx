@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "../components/admin/AdminSidebar";
 import AdminProvider from "../context/AdminProvider";
-import { Outlet } from "react-router-dom";
 import AdminNavbar from "../components/admin/AdminNavbar";
+import { Outlet } from "react-router-dom";
 
 //Layout
 const AdminLayout = () => {

@@ -12,10 +12,7 @@ const LoginComponent = ({ onLogin }) => {
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
-  const API_URL = import.meta.env.DEV
-  ? "http://localhost:4000/api"
-  : import.meta.env.VITE_API_URL;
-
+  const API_URL = import.meta.env.VITE_API_URL;
 
   //handle login
   const handleLogin = async (e) => {
@@ -30,7 +27,6 @@ const LoginComponent = ({ onLogin }) => {
       });
 
       const { token, user, role } = response.data;
-      console.log("Login response:", response.data);
 
       if (role !== mode) {
         setError(`Invalid credentials for ${mode} login`);
