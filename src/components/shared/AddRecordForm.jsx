@@ -1,8 +1,7 @@
-import React, { useState, useContext, useMemo } from "react";
+import React, { useState, useContext } from "react";
 import { useAuth } from "../../context/AuthContext";
 import OptionsContext from "../../context/OptionsContext";
 import { toast } from "react-toastify";
-import { State } from "country-state-city";
 import MobileFields from "./MobileFields";
 import ExistingUserSearch from "./ExistingUserSearch";
 import { expectedHeaders, headerLabels } from "../../utils/utils";
@@ -15,7 +14,6 @@ import {
   stripCountryCode,
   detectPhoneIso,
   buildFullPhone,
-  countries,
 } from "../../utils/formUtils";
 
 const LabelWithAsterisk = ({ text }) => (
@@ -45,11 +43,8 @@ const AddRecordForm = ({ onAdd }) => {
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedCountry, setSelectedCountry] = useState("");
-  const { dropdowns, requiredFields, loading } = useContext(OptionsContext);
-
-  const states = useMemo(() => {
-    return selectedCountry ? State.getStatesOfCountry(selectedCountry) : [];
-  }, [selectedCountry]);
+  const { dropdowns, requiredFields, loading, getStatesByCountry } =
+    useContext(OptionsContext);
 
   // ============ HANDLER FUNCTIONS ============
 
@@ -60,9 +55,10 @@ const AddRecordForm = ({ onAdd }) => {
 
   // Address country change (does NOT affect phone countries)
   const handleCountryChange = (e) => {
-    const countryName = e.target.value;
-    const countryObj = countries.find((c) => c.name === countryName);
+    const countryName = e.target.value; // "India" (keep original case)
+    const countryObj = dropdowns.country?.find((c) => c.name === countryName);
     const isoCode = countryObj?.isoCode || "";
+
     if (!countryObj) {
       toast.error("Invalid country selection");
       return;
@@ -70,7 +66,7 @@ const AddRecordForm = ({ onAdd }) => {
 
     setFormData((prev) => ({
       ...prev,
-      country: countryName,
+      country: countryName, // ✅ Keep original case "India"
       countryIso: isoCode,
       state: "",
     }));
@@ -80,7 +76,7 @@ const AddRecordForm = ({ onAdd }) => {
 
   const handlePhoneCountryChange = (e, phoneNumber) => {
     const countryName = e.target.value;
-    const countryObj = countries.find((c) => c.name === countryName);
+    const countryObj = dropdowns.country?.find((c) => c.name === countryName);
     const isoCode = countryObj?.isoCode || "";
 
     setFormData((prev) => ({
@@ -104,9 +100,17 @@ const AddRecordForm = ({ onAdd }) => {
 
     if (!validateName(formData.customerName)) return "Invalid customer name";
 
-    if (!isValidCountry(formData.countryIso)) return "Invalid country selected";
+    if (!isValidCountry(formData.countryIso, dropdowns.country))
+      return "Invalid country selected";
 
-    if (formData.state && !isValidState(formData.countryIso, formData.state))
+    if (
+      formData.state &&
+      !isValidState(
+        formData.countryIso,
+        formData.state,
+        getStatesByCountry(formData.countryIso),
+      )
+    )
       return "Invalid state for selected country";
 
     if (formData.email1 && !validateEmail(formData.email1))
@@ -213,8 +217,8 @@ const AddRecordForm = ({ onAdd }) => {
       setExistingRecords([]);
       setSelectedRecord(null);
     } catch (error) {
-      console.error("Failed to add record", error);
-      toast.error("Failed to add record. Please try again.");
+      const errorMsg = error?.message || "Failed to add record. Please try again.";
+      toast.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -253,8 +257,8 @@ const AddRecordForm = ({ onAdd }) => {
         const selected = user[0];
         setSelectedRecord(selected);
 
-        const userCountryObj = countries.find(
-          (c) => c.name === selected.country,
+        const userCountryObj = dropdowns.country?.find(
+          (c) => c.name.toLowerCase() === selected.country?.toLowerCase(),
         );
 
         const mobile1CountryIso = detectPhoneIso(
@@ -299,14 +303,16 @@ const AddRecordForm = ({ onAdd }) => {
         toast.error("No user found with this input.");
       }
     } catch (error) {
-      console.error(error);
-      toast.error("Error searching user.");
+      const errorMsg = error?.message || "Could not search for user. Please try again.";
+      toast.error(errorMsg);
     }
   };
 
   const handleEditExistingUser = () => {
     if (!selectedRecord) return;
-    const countryObj = countries.find((c) => c.name === selectedRecord.country);
+    const countryObj = dropdowns.country?.find(
+      (c) => c.name.toLowerCase() === selectedRecord.country?.toLowerCase(),
+    );
     setSelectedCountry(countryObj?.isoCode || "");
 
     setFormData((prev) => ({
@@ -465,7 +471,7 @@ const AddRecordForm = ({ onAdd }) => {
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
                     >
                       <option value="">Select Country</option>
-                      {countries.map((c) => (
+                      {dropdowns.country?.map((c) => (
                         <option key={c.isoCode} value={c.name}>
                           {c.name}
                         </option>
@@ -475,20 +481,28 @@ const AddRecordForm = ({ onAdd }) => {
                     <select
                       id={key}
                       name={key}
-                      value={formData[key]}
+                      value={formData.state}
                       onChange={handleChange}
                       className="border border-gray-300 rounded-lg px-3 py-2 bg-white"
+                      disabled={!selectedCountry}
                     >
-                      <option value="">Select State</option>
-                      {states.length > 0 ? (
-                        states.map((s) => (
-                          <option key={s.isoCode} value={s.name}>
-                            {s.name}
-                          </option>
-                        ))
-                      ) : (
-                        <option disabled>No states available</option>
-                      )}
+                      <option value="">
+                        {!selectedCountry
+                          ? "Select country first"
+                          : getStatesByCountry(selectedCountry).length
+                            ? "Select State"
+                            : "No states available"}
+                      </option>
+                      {selectedCountry &&
+                        getStatesByCountry(selectedCountry).map(
+                          (
+                            s, // ✅ Perfect
+                          ) => (
+                            <option key={s} value={s}>
+                              {s}
+                            </option>
+                          ),
+                        )}
                     </select>
                   ) : dropdowns[key] ? (
                     <select

@@ -3,7 +3,6 @@ import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
 import { Table2, AlertCircle, ChevronUp, ChevronDown } from "lucide-react";
-import { Country, State } from "country-state-city";
 import {
   expectedHeaders,
   headerLabels,
@@ -23,15 +22,8 @@ const SellerRecordList = () => {
     requiredFields,
     loading: optionsLoading,
     error: optionsError,
+    getStatesByCountry,
   } = useContext(OptionsContext);
-  const countryOptions = useMemo(
-    () => Country.getAllCountries().map((c) => c.name),
-    [],
-  );
-  const stateOptions = useMemo(
-    () => State.getAllStates().map((s) => s.name),
-    [],
-  );
   const {
     sellerRecords,
     updateSellerRecord,
@@ -182,8 +174,8 @@ const SellerRecordList = () => {
 
       toast.success("Record updated successfully!");
     } catch (error) {
-      console.error(error);
-      toast.error("Failed to update record.");
+      const errorMsg = error?.message || "Failed to update record. Please try again.";
+      toast.error(errorMsg);
     }
 
     setEditingId(null);
@@ -200,8 +192,8 @@ const SellerRecordList = () => {
       const history = await getRecordHistory(recordId);
       setRecordHistory((prev) => ({ ...prev, [recordId]: history }));
     } catch (error) {
-      console.error("Error fetching history:", error);
-      toast.error("Failed to fetch record history");
+      const errorMsg = error?.message || "Could not fetch record history. Please try again.";
+      toast.error(errorMsg);
     } finally {
       setLoadingHistory((prev) => ({ ...prev, [recordId]: false }));
     }
@@ -261,8 +253,7 @@ const SellerRecordList = () => {
           validationErrors={validationErrors}
           nonEditableFields={nonEditableFields}
           dropdowns={dropdowns}
-          countryOptions={countryOptions}
-          stateOptions={stateOptions}
+          getStatesByCountry={getStatesByCountry}
           sellerEmail={sellerEmail}
           expandedHistoryId={expandedHistoryId}
           recordHistory={recordHistory}

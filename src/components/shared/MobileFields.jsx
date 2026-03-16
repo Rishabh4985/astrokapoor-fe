@@ -1,5 +1,6 @@
-import React from "react";
-import { countries,getCountryCodeFromIso } from "../../utils/formUtils";
+import React, { useContext } from "react";
+import OptionsContext from "../../context/OptionsContext";
+import { getCountryCodeFromIso } from "../../utils/formUtils";
 
 const MobileFields = ({
   name,
@@ -10,6 +11,7 @@ const MobileFields = ({
   onChange,
   onCountryChange,
 }) => {
+  const { dropdowns } = useContext(OptionsContext);
   const isCountrySelected = !!countryIso;
 
   return (
@@ -29,13 +31,13 @@ const MobileFields = ({
       <div className="flex w-full rounded-lg border border-gray-300 overflow-hidden">
         <select
           value={
-            countries.find((c) => c.isoCode === countryIso)?.name || ""
+            dropdowns.country?.find((c) => c.isoCode === countryIso)?.name || ""
           }
           onChange={(e) => onCountryChange(e, name)}
           className="bg-gray-100 text-sm px-1 outline-none border-r border-gray-300 max-w-[120px]"
         >
           <option value="">Country</option>
-          {countries.map((c) => (
+          {dropdowns.country?.map((c) => (
             <option key={c.isoCode} value={c.name}>
               {c.isoCode} {getCountryCodeFromIso(c.isoCode)}
             </option>

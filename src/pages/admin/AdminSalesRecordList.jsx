@@ -10,12 +10,11 @@ import {
   nonEditableFields,
   categoryOptionsConfig,
 } from "../../utils/utils.js";
-import { Country, State } from "country-state-city";
 import Filters from "../../components/shared/Filters";
 import AdminPagination from "../../components/admin/AdminPagination.jsx";
 import AdminTable from "../../components/admin/AdminTable.jsx";
 import OptionsContext from "../../context/OptionsContext";
-import { formatValue, capitalizeValue } from "../../utils/formatter.js";
+import { formatValue } from "../../utils/formatter.js";
 
 const AdminSalesRecordList = () => {
   const {
@@ -23,15 +22,8 @@ const AdminSalesRecordList = () => {
     requiredFields,
     loading: optionsLoading,
     error: optionsError,
+    getStatesByCountry,
   } = useContext(OptionsContext);
-  const countryOptions = useMemo(
-    () => Country.getAllCountries().map((c) => c.name),
-    [],
-  );
-  const stateOptions = useMemo(
-    () => State.getAllStates().map((s) => s.name),
-    [],
-  );
   const {
     records,
     page,
@@ -52,15 +44,24 @@ const AdminSalesRecordList = () => {
 
   const getDropdownOptionsForField = (fieldName) => {
     if (fieldName === "country") {
-      return countryOptions.map((item) => ({
-        label: capitalizeValue(item),
-        value: item,
-      }));
+      return dropdowns.country?.map((item) => ({
+        label: item.name,
+        value: item.name,
+      })) || [];
     }
 
     if (fieldName === "state") {
-      return stateOptions.map((item) => ({
-        label: capitalizeValue(item),
+      const record = flattenedRecords.find((r) => r._id === editingId);
+      if (!record || !record.country) return [];
+      
+      const countryObj = dropdowns.country?.find(
+        (c) => c.name.toLowerCase() === record.country.toLowerCase(),
+      );
+      if (!countryObj) return [];
+      
+      const states = getStatesByCountry(countryObj.isoCode);
+      return states.map((item) => ({
+        label: item,
         value: item,
       }));
     }

@@ -13,8 +13,7 @@ const SellerTable = ({
   validationErrors,
   nonEditableFields,
   dropdowns,
-  countryOptions,
-  stateOptions,
+  getStatesByCountry,
   sellerEmail,
   expandedHistoryId,
   recordHistory,
@@ -104,7 +103,48 @@ const SellerTable = ({
                           }`}
                         >
                           {isEditing && !nonEditableFields.includes(key) ? (
-                            dropdowns?.[key] ? (
+                            key === "country" ? (
+                              <select
+                                value={value}
+                                onChange={(e) =>
+                                  handleChange(key, e.target.value)
+                                }
+                                className="border rounded p-1 w-full text-xs border-orange-300"
+                              >
+                                <option value="">Select Country</option>
+                                {dropdowns.country?.map((c, idx) => (
+                                  <option key={idx} value={c.name}>
+                                    {c.name}
+                                  </option>
+                                ))}
+                              </select>
+                            ) : key === "state" ? (
+                              (() => {
+                                const countryObj = dropdowns.country?.find(
+                                  (c) => c.name.toLowerCase() === (editedRecord.country || "").toLowerCase(),
+                                );
+                                const states = countryObj ? getStatesByCountry(countryObj.isoCode) : [];
+                                return (
+                                  <select
+                                    value={value}
+                                    onChange={(e) =>
+                                      handleChange(key, e.target.value)
+                                    }
+                                    disabled={!countryObj}
+                                    className="border rounded p-1 w-full text-xs border-orange-300 disabled:bg-gray-100"
+                                  >
+                                    <option value="">
+                                      {!countryObj ? "Select country first" : "Select State"}
+                                    </option>
+                                    {states.map((s, idx) => (
+                                      <option key={idx} value={s}>
+                                        {s}
+                                      </option>
+                                    ))}
+                                  </select>
+                                );
+                              })()
+                            ) : Array.isArray(dropdowns?.[key]) ? (
                               <select
                                 value={value}
                                 onChange={(e) =>
@@ -138,36 +178,6 @@ const SellerTable = ({
                                     </option>
                                   );
                                 })}
-                              </select>
-                            ) : key === "country" ? (
-                              <select
-                                value={value}
-                                onChange={(e) =>
-                                  handleChange(key, e.target.value)
-                                }
-                                className="border rounded p-1 w-full text-xs border-orange-300"
-                              >
-                                <option value="">Select Country</option>
-                                {countryOptions.map((c, idx) => (
-                                  <option key={idx} value={c}>
-                                    {c}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : key === "state" ? (
-                              <select
-                                value={value}
-                                onChange={(e) =>
-                                  handleChange(key, e.target.value)
-                                }
-                                className="border rounded p-1 w-full text-xs border-orange-300"
-                              >
-                                <option value="">Select State</option>
-                                {stateOptions.map((s, idx) => (
-                                  <option key={idx} value={s}>
-                                    {s}
-                                  </option>
-                                ))}
                               </select>
                             ) : (
                               <input

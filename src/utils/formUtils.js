@@ -1,11 +1,10 @@
-import { Country, State } from "country-state-city";
 import {
   parsePhoneNumberFromString,
   getCountryCallingCode,
 } from "libphonenumber-js";
 import disposableDomains from "disposable-email-domains";
 
-export const countries = Country.getAllCountries();
+export const countries = [];
 
 export const getCountryCodeFromIso = (isoCode) => {
   try {
@@ -49,7 +48,7 @@ export const validateName = (value) => /^[a-zA-Z\s.'-]{2,}$/.test(value.trim());
 
 export const validatePhone = (countryIso, number) => {
   if (!number) return true;
-  if (!countryIso) return false; 
+  if (!countryIso) return false;
 
   try {
     const callingCode = getCountryCallingCode(countryIso);
@@ -60,13 +59,13 @@ export const validatePhone = (countryIso, number) => {
   }
 };
 
-export const isValidCountry = (iso) => countries.some((c) => c.isoCode === iso);
+export const isValidCountry = (iso, availableCountries = []) => {
+  return availableCountries.some((c) => c.isoCode === iso);
+};
 
-export const isValidState = (countryIso, stateName) => {
+export const isValidState = (countryIso, stateName, availableStates = []) => {
   if (!stateName || !countryIso) return true;
-  const states = State.getStatesOfCountry(countryIso);
-  if (!states.length) return true;
-  return states.some((s) => s.name === stateName);
+  return availableStates.includes(stateName);
 };
 
 export const buildFullPhone = (countryIso, number) => {

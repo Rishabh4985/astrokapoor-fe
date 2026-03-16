@@ -17,7 +17,7 @@ const Filters = ({
   showSearch = true,
   showAdvancedToggle = true,
 }) => {
-  const { dropdowns } = useContext(OptionsContext);
+  const { dropdowns, getStatesByCountry } = useContext(OptionsContext);
   const { filters, setFilters, goToPage } = useContext(context);
 
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -131,41 +131,67 @@ const Filters = ({
           </button>
         )}
       </div>
-
       {/* ADVANCED FILTERS */}
       {showAdvanced && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 p-4 bg-white border rounded-lg">
-          {categoryOptionsConfig.map(({ key, label }) => (
-            <div key={key}>
-              <label className="text-xs font-medium text-gray-600">
-                {label}
-              </label>
+          {categoryOptionsConfig.map(({ key, label }) => {
+            if (key === "state") return null;
 
-              <select
-                value={localFilters[key]}
-                onChange={(e) => updateFilter(key, e.target.value)}
-                className="w-full border px-3 py-2 rounded-lg text-sm"
-              >
-                <option value="">All</option>
+            return (
+              <div key={key}>
+                <label className="text-xs font-medium text-gray-600">
+                  {label}
+                </label>
+                <select
+                  value={localFilters[key]}
+                  onChange={(e) => updateFilter(key, e.target.value)}
+                  className="w-full border px-3 py-2 rounded-lg text-sm"
+                >
+                  <option value="">All</option>
+                  {(fieldOptionsMap[key] || []).map((v, i) => {
+                    const value = typeof v === "object" ? v.name : v;
+                    return (
+                      <option key={value || i} value={value}>
+                        {value}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+            );
+          })}
 
-                {(fieldOptionsMap[key] || []).map((v, i) => {
-                  const value = typeof v === "object" ? v.name : v;
-                  return (
-                    <option key={value || i} value={value}>
-                      {value}
-                    </option>
-                  );
-                })}
-              </select>
+          {localFilters.country && (
+            <div>
+              <label className="text-xs font-medium text-gray-600">State</label>
+              {(() => {
+                const countryObj = dropdowns.country?.find(
+                  (c) => c.name.toLowerCase() === (localFilters.country || "").toLowerCase(),
+                );
+                const states = countryObj ? getStatesByCountry(countryObj.isoCode) : [];
+                return (
+                  <select
+                    value={localFilters.state || ""}
+                    onChange={(e) => updateFilter("state", e.target.value)}
+                    className="w-full border px-3 py-2 rounded-lg text-sm"
+                  >
+                    <option value="">All States</option>
+                    {states?.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                );
+              })()}
             </div>
-          ))}
+          )}
 
-          {/* DATE FILTER */}
+          {/* ✅ 3. DATE FILTERS */}
           <div>
             <label className="text-xs font-medium text-gray-600">
               Date Filter
             </label>
-
             <select
               value={localFilters.dateType}
               onChange={(e) => updateFilter("dateType", e.target.value)}
@@ -179,6 +205,7 @@ const Filters = ({
             </select>
           </div>
 
+          {/* ✅ 4. Date input fields */}
           {localFilters.dateType === "date" && (
             <input
               type="date"
@@ -187,7 +214,6 @@ const Filters = ({
               className="border px-3 py-2 rounded-lg text-sm"
             />
           )}
-
           {localFilters.dateType === "range" && (
             <>
               <input
@@ -204,7 +230,6 @@ const Filters = ({
               />
             </>
           )}
-
           {localFilters.dateType === "month" && (
             <input
               type="month"
@@ -213,7 +238,6 @@ const Filters = ({
               className="border px-3 py-2 rounded-lg text-sm"
             />
           )}
-
           {localFilters.dateType === "year" && (
             <input
               type="number"
@@ -225,7 +249,6 @@ const Filters = ({
           )}
         </div>
       )}
-
       {/* CLEAR */}
       {hasActiveFilters && (
         <button

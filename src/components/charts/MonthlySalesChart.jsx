@@ -26,7 +26,7 @@ const MonthlySalesChart = ({ data = [] }) => {
       <ResponsiveContainer width="100%" height={350}>
         <BarChart
           data={data}
-          margin={{ top: 10, right: 20, left: 10, bottom: 10 }}
+          margin={{ top: 30, right: 20, left: 40, bottom: 20 }}
         >
           <CartesianGrid strokeDasharray="3 3" stroke="#fcd9a4" />
           <XAxis dataKey="name" stroke="#92400e" />

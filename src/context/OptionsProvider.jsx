@@ -8,8 +8,8 @@ const OptionsProvider = ({ children }) => {
     category: [],
     status: [],
     overallRating: [],
-    state: [],
     country: [],
+    state: {},
     expert: [],
     handleBy: [],
   });
@@ -23,16 +23,28 @@ const OptionsProvider = ({ children }) => {
     const fetchOptions = async () => {
       try {
         const API_BASE = import.meta.env.VITE_API_URL;
-
         const res = await fetch(`${API_BASE}/options`);
         if (!res.ok) throw new Error("Failed to fetch options");
 
         const data = await res.json();
 
-        const { requiredFields, ...dropdownData } = data;
+        const {
+          requiredFields: reqFields,
+          state,
+          country,
+          ...rest
+        } = data;
 
-        setDropdowns(dropdownData);
-        setRequiredFields(requiredFields || []);
+        setDropdowns({
+          ...rest,
+          country: country.map((c) => ({
+            name: c.name,
+            isoCode: c.isoCode || c.iso2,
+          })),
+          state,
+        });
+
+        setRequiredFields(reqFields || []);
       } catch (err) {
         console.error("Options fetch error:", err);
         setError(err.message);
@@ -40,13 +52,17 @@ const OptionsProvider = ({ children }) => {
         setLoading(false);
       }
     };
-
     fetchOptions();
   }, []);
 
+  const getStatesByCountry = (countryIso) => {
+    if (!dropdowns.state || !countryIso) return [];
+    return dropdowns.state[countryIso] || [];
+  };
+
   return (
     <OptionsContext.Provider
-      value={{ dropdowns, requiredFields, loading, error }}
+      value={{ dropdowns, requiredFields, loading, error, getStatesByCountry }}
     >
       {children}
     </OptionsContext.Provider>
