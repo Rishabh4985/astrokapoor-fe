@@ -1,26 +1,32 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { toast } from "react-toastify";
 import axios from "axios";
-import { UserPlus, List, Trash2, Pencil, Loader2 } from "lucide-react";
+import { UserPlus, List, Trash2, Pencil, Loader2, Eye, EyeOff } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 
 const ManageSalesPerson = () => {
+  const { authToken, userRole } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [salespersons, setSalespersons] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  const token = localStorage.getItem("authToken");
+  const [editingId, setEditingId] = useState(null);
+  const [editPassword, setEditPassword] = useState("");
+  const [showEditPassword, setShowEditPassword] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_URL;
 
   const fetchSalespersons = useCallback(async () => {
+    if (!authToken || userRole !== "admin") return;
+
     try {
       setLoading(true);
       const { data } = await axios.get(`${API_BASE}/admin/sellers`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       if (Array.isArray(data)) {
         setSalespersons(data);
@@ -36,7 +42,7 @@ const ManageSalesPerson = () => {
     } finally {
       setLoading(false);
     }
-  }, [token, API_BASE]);
+  }, [authToken, userRole, API_BASE]);
 
   useEffect(() => {
     fetchSalespersons();
@@ -45,6 +51,10 @@ const ManageSalesPerson = () => {
   const handleAdd = async () => {
     if (!firstName || !email || !password) {
       return toast.error("All fields are required.");
+    }
+
+    if (password.length < 6) {
+      return toast.error("Password must be at least 6 characters long.");
     }
 
     const payload = {
@@ -56,7 +66,7 @@ const ManageSalesPerson = () => {
 
     try {
       await axios.post(`${API_BASE}/admin/sellers`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
 
       toast.success("Salesperson added successfully!");
@@ -77,7 +87,7 @@ const ManageSalesPerson = () => {
 
     try {
       await axios.delete(`${API_BASE}/admin/sellers/${id}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${authToken}` },
       });
       toast.success("Salesperson deleted.");
       fetchSalespersons();
@@ -86,23 +96,46 @@ const ManageSalesPerson = () => {
     }
   };
 
-  const handleEdit = async (id) => {
-    const newPassword = prompt("Enter new password:");
-    if (!newPassword) return;
+  const handleEdit = (id) => {
+    setEditingId(id);
+    setEditPassword("");
+    setShowEditPassword(false);
+  };
+
+  const handleEditPasswordSubmit = async () => {
+    const trimmedPassword = editPassword.trim();
+    
+    if (!trimmedPassword) {
+      return toast.error("Password cannot be empty.");
+    }
+
+    if (trimmedPassword.length < 6) {
+      return toast.error("Password must be at least 6 characters long.");
+    }
 
     try {
       await axios.patch(
-        `${API_BASE}/admin/sellers/${id}`,
-        { password: newPassword },
+        `${API_BASE}/admin/sellers/${editingId}`,
+        { password: trimmedPassword },
         {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         },
       );
-      toast.success("Password updated.");
+      toast.success("Password updated successfully.");
+      setEditingId(null);
+      setEditPassword("");
+      setShowEditPassword(false);
       fetchSalespersons();
-    } catch {
-      toast.error("Failed to update password.");
+    } catch (err) {
+      const errorMsg = err?.response?.data?.message || "Failed to update password.";
+      toast.error(errorMsg);
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditPassword("");
+    setShowEditPassword(false);
   };
 
   return (
@@ -148,35 +181,58 @@ const ManageSalesPerson = () => {
                 <div key={label}>
                   <label className="block text-sm font-medium mb-1 text-gray-700">
                     {label}
+                    {(i === 0 || i === 2 || i === 3) && (
+                      <span className="text-red-500 ml-1">*</span>
+                    )}
                   </label>
-                  <input
-                    type={
-                      label === "Password"
-                        ? "password"
-                        : label === "Email"
+                  {label === "Password" ? (
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="Enter password (min 6 characters)"
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                      >
+                        {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                      </button>
+                    </div>
+                  ) : (
+                    <input
+                      type={
+                        label === "Email"
                           ? "email"
                           : "text"
-                    }
-                    value={
-                      i === 0
-                        ? firstName
-                        : i === 1
-                          ? lastName
-                          : i === 2
-                            ? email
-                            : password
-                    }
-                    onChange={(e) =>
-                      i === 0
-                        ? setFirstName(e.target.value)
-                        : i === 1
-                          ? setLastName(e.target.value)
-                          : i === 2
-                            ? setEmail(e.target.value)
-                            : setPassword(e.target.value)
-                    }
-                    className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
+                      }
+                      value={
+                        i === 0
+                          ? firstName
+                          : i === 1
+                            ? lastName
+                            : email
+                      }
+                      onChange={(e) =>
+                        i === 0
+                          ? setFirstName(e.target.value)
+                          : i === 1
+                            ? setLastName(e.target.value)
+                            : setEmail(e.target.value)
+                      }
+                      placeholder={
+                        i === 0
+                          ? "Enter first name"
+                          : i === 1
+                            ? "Enter last name (optional)"
+                            : "Enter email address"
+                      }
+                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    />
+                  )}
                 </div>
               ),
             )}
@@ -241,6 +297,65 @@ const ManageSalesPerson = () => {
               </tbody>
             </table>
           )}
+        </div>
+      )}
+
+      {/* ====== PASSWORD EDIT MODAL ====== */}
+      {editingId && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md border border-orange-100">
+            <h3 className="text-lg font-semibold text-orange-700 mb-4">
+              Update Password
+            </h3>
+
+            <div className="space-y-4">
+              <div className="relative">
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  New Password (minimum 6 characters)
+                </label>
+                <input
+                  type={showEditPassword ? "text" : "password"}
+                  value={editPassword}
+                  onChange={(e) => setEditPassword(e.target.value)}
+                  placeholder="Enter new password"
+                  className="w-full px-3 py-2 border border-orange-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditPassword((prev) => !prev)}
+                  className="absolute right-3 top-8 text-gray-500 hover:text-orange-600"
+                >
+                  {showEditPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={handleEditPasswordSubmit}
+                  disabled={!editPassword || editPassword.trim().length < 6}
+                  className={`flex-1 py-2 rounded-lg font-medium transition ${
+                    !editPassword || editPassword.trim().length < 6
+                      ? "bg-gray-400 cursor-not-allowed text-gray-500"
+                      : "bg-orange-600 hover:bg-orange-700 text-white"
+                  }`}
+                >
+                  Save Password
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 py-2 rounded-lg font-medium transition"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              {editPassword && editPassword.length < 6 && (
+                <p className="text-red-600 text-sm text-center">
+                  Password must be at least 6 characters long
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>

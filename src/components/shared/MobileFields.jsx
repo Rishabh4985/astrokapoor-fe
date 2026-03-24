@@ -1,6 +1,5 @@
 import React, { useContext } from "react";
 import OptionsContext from "../../context/OptionsContext";
-import { getCountryCodeFromIso } from "../../utils/formUtils";
 
 const MobileFields = ({
   name,
@@ -14,32 +13,43 @@ const MobileFields = ({
   const { dropdowns } = useContext(OptionsContext);
   const isCountrySelected = !!countryIso;
 
+  const formatCountryCodeLabel = (country) => {
+    const iso = (country?.isoCode || "").toUpperCase();
+    const rawPhone = (country?.phoneCode || "").toString().trim();
+    const phone = rawPhone ? `+${rawPhone.replace(/^\+/, "")}` : "";
+
+    if (phone && iso) return `${phone} ${iso}`;
+    if (phone) return phone;
+    if (iso) return iso;
+    return country?.name || "";
+  };
+
   return (
     <div className="flex flex-col">
-      <div className="flex items-center gap-2 mb-1">
-        <label className="text-sm text-gray-700">
+      <div className="mb-1 flex items-center gap-2">
+        <label className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {label} {required && <span className="text-red-500">*</span>}
         </label>
 
         {!isCountrySelected && (
-          <span className="text-xs text-amber-600 font-medium whitespace-nowrap">
+          <span className="whitespace-nowrap rounded-md bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">
             Select country first
           </span>
         )}
       </div>
 
-      <div className="flex w-full rounded-lg border border-gray-300 overflow-hidden">
+      <div className="flex w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <select
           value={
             dropdowns.country?.find((c) => c.isoCode === countryIso)?.name || ""
           }
           onChange={(e) => onCountryChange(e, name)}
-          className="bg-gray-100 text-sm px-1 outline-none border-r border-gray-300 max-w-[120px]"
+          className="h-10 w-[92px] shrink-0 border-r border-slate-200 bg-slate-50 px-2 text-xs font-medium text-slate-700 outline-none sm:w-[108px]"
         >
-          <option value="">Country</option>
+          <option value="">Code</option>
           {dropdowns.country?.map((c) => (
             <option key={c.isoCode} value={c.name}>
-              {c.isoCode} {getCountryCodeFromIso(c.isoCode)}
+              {formatCountryCodeLabel(c)}
             </option>
           ))}
         </select>
@@ -50,7 +60,7 @@ const MobileFields = ({
           onChange={onChange}
           type="tel"
           disabled={!isCountrySelected}
-          className="flex-1 px-3 py-2 text-sm outline-none"
+          className="h-10 flex-1 bg-white px-3 text-sm text-slate-700 outline-none disabled:cursor-not-allowed disabled:bg-slate-100"
         />
       </div>
     </div>

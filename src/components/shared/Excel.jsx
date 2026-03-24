@@ -218,11 +218,25 @@ const Excel = ({ onImport, onExport }) => {
     });
   };
 
-  const handleExportClick = () => {
+  const handleExportClick = async () => {
     try {
-      const records = onExport();
+      if (!onExport) {
+        toast.warning("No records available to export");
+        return;
+      }
+
+      const records = await onExport();
+      if (!Array.isArray(records) || records.length === 0) {
+        toast.warning("No records available to export");
+        return;
+      }
 
       const categories = ["consultation", "products", "gemstones"];
+      const sheetNameMap = {
+        consultation: "Consultation",
+        products: "Products",
+        gemstones: "Gemstones",
+      };
 
       const reverseHeaderMap = Object.entries(headerMap).reduce(
         (acc, [excelHeader, fieldName]) => {
@@ -232,13 +246,44 @@ const Excel = ({ onImport, onExport }) => {
         {},
       );
 
+      const normalizeCategory = (value) =>
+        value?.toString().trim().toLowerCase() || "";
+
+      const toCellValue = (value) => {
+        if (Array.isArray(value)) {
+          return value
+            .map((item) => toCellValue(item))
+            .filter(Boolean)
+            .join(", ");
+        }
+
+        if (value && typeof value === "object") {
+          return value.name || value.label || value.value || "";
+        }
+
+        return value ?? "";
+      };
+
+      const getRecordCategories = (record) => {
+        const raw = record?.category;
+
+        if (Array.isArray(raw)) {
+          return raw
+            .flatMap((item) => toCellValue(item).toString().split(","))
+            .map(normalizeCategory)
+            .filter(Boolean);
+        }
+
+        return toCellValue(raw)
+          .toString()
+          .split(",")
+          .map(normalizeCategory)
+          .filter(Boolean);
+      };
+
       const filterAndMapRecords = (category) => {
         return records
-          .filter(
-            (record) =>
-              (record.category || "").toString().trim().toLowerCase() ===
-              category,
-          )
+          .filter((record) => getRecordCategories(record).includes(category))
 
           .map((record) => {
             const mapped = {};
@@ -246,7 +291,7 @@ const Excel = ({ onImport, onExport }) => {
             allowedFields.forEach((field) => {
               if (record[field] !== undefined) {
                 const excelKey = reverseHeaderMap[field];
-                mapped[excelKey] = record[field];
+                mapped[excelKey] = toCellValue(record[field]);
               }
             });
             return mapped;
@@ -254,12 +299,6 @@ const Excel = ({ onImport, onExport }) => {
       };
 
       const workbook = XLSX.utils.book_new();
-
-      const sheetNameMap = {
-        consultation: "Consultation",
-        products: "Products",
-        gemstones: "Gemstones",
-      };
 
       categories.forEach((category) => {
         const data = filterAndMapRecords(category);
@@ -273,8 +312,26 @@ const Excel = ({ onImport, onExport }) => {
         }
       });
 
+      if (workbook.SheetNames.length === 0) {
+        const fallbackData = records.map((record) => {
+          const mapped = {};
+          allowedFields.forEach((field) => {
+            if (record[field] !== undefined) {
+              const excelKey = reverseHeaderMap[field];
+              mapped[excelKey] = toCellValue(record[field]);
+            }
+          });
+          return mapped;
+        });
+
+        if (fallbackData.length > 0) {
+          const worksheet = XLSX.utils.json_to_sheet(fallbackData);
+          XLSX.utils.book_append_sheet(workbook, worksheet, "Records");
+        }
+      }
+
       XLSX.writeFile(workbook, "sales_data.xlsx");
-      toast.success("Excel exported successfully with three category sheets!");
+      toast.success("Excel exported successfully!");
     } catch (err) {
       toast.error("Failed to export Excel.");
       console.error(err);

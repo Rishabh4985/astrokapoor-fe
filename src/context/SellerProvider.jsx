@@ -87,11 +87,17 @@ const SellerProvider = ({ children }) => {
 
         Object.entries(appliedFilters).forEach(([key, value]) => {
           if (!value || value === "all") return;
+          const paramKey = key === "query" ? "search" : key;
 
-          params.append(
-            key === "query" ? "search" : key,
-            value.toString().trim(),
-          );
+          if (Array.isArray(value)) {
+            value
+              .map((item) => item?.toString().trim())
+              .filter(Boolean)
+              .forEach((item) => params.append(paramKey, item));
+            return;
+          }
+
+          params.append(paramKey, value.toString().trim());
         });
 
         const res = await axios.get(
@@ -139,7 +145,14 @@ const SellerProvider = ({ children }) => {
         const params = new URLSearchParams();
         Object.entries(filters).forEach(([key, value]) => {
           if (value && value !== "all" && value !== "") {
-            params.append(key, value.toString().trim());
+            if (Array.isArray(value)) {
+              value
+                .map((item) => item?.toString().trim())
+                .filter(Boolean)
+                .forEach((item) => params.append(key, item));
+            } else {
+              params.append(key, value.toString().trim());
+            }
           }
         });
 
@@ -355,13 +368,19 @@ const SellerProvider = ({ children }) => {
         // Convert dateOfPayment string back to proper Date format
         let updatePayload = { ...recordData };
 
-        // If dateOfPayment is a string like "16/10/2025", convert it back to ISO date
-        if (
-          typeof updatePayload.dateOfPayment === "string" &&
-          updatePayload.dateOfPayment.includes("/")
-        ) {
-          const [day, month, year] = updatePayload.dateOfPayment.split("/");
-          updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
+        // Convert edited date values to Date objects before sending
+        if (typeof updatePayload.dateOfPayment === "string") {
+          const trimmedDate = updatePayload.dateOfPayment.trim();
+
+          if (trimmedDate.includes("/")) {
+            const [day, month, year] = trimmedDate.split("/");
+            updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
+          } else if (trimmedDate) {
+            const parsedDate = new Date(trimmedDate);
+            if (!Number.isNaN(parsedDate.getTime())) {
+              updatePayload.dateOfPayment = parsedDate;
+            }
+          }
         }
 
         // Remove fields we don't want to update

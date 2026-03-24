@@ -3,22 +3,39 @@ import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   FileText,
-  User,
   Search,
   PlusCircle,
-  ChevronLeft,
+  User,
+  Users,
+  ChevronRight,
+  X,
+  ShieldCheck,
 } from "lucide-react";
 
-//Sidebar
 const AdminSidebar = ({ isMobile, onClose }) => {
   const location = useLocation();
 
-  //Navlinks
+  const menuItems = [
+    { to: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { to: "/admin/sales-records", label: "Sales Records", icon: FileText },
+    { to: "/admin/sales-lookup", label: "Sales Lookup", icon: Search },
+    { to: "/admin/add-record", label: "Add Record", icon: PlusCircle },
+    { to: "/admin/profile", label: "Profile", icon: User },
+  ];
+
+  const managementItems = [
+    {
+      to: "/admin/manage-salesperson",
+      label: "Manage Salesperson",
+      icon: Users,
+    },
+  ];
+
   const navLinkStyles = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all duration-200 ${
+    `group flex items-center justify-between rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 ${
       isActive
-        ? "bg-orange-200 text-orange-800 shadow-sm"
-        : "text-orange-700 hover:bg-orange-100 hover:text-orange-800"
+        ? "bg-white text-orange-900 shadow-md"
+        : "text-orange-100/95 hover:bg-white/10 hover:text-white"
     }`;
 
   const handleNavClick = (e) => {
@@ -29,108 +46,112 @@ const AdminSidebar = ({ isMobile, onClose }) => {
   };
 
   return (
-    <div
+    <aside
       className={`
-        h-full bg-orange-50 border-r border-orange-200 shadow-lg
-        transition-all duration-300 ease-in-out
-        ${isMobile ? "w-80 max-w-[85vw]" : "w-64"}
-        overflow-hidden flex flex-col
+        relative h-full overflow-hidden border-r border-orange-300/30
+        bg-gradient-to-b from-stone-950 via-orange-950 to-amber-800
+        text-white shadow-2xl
+        ${isMobile ? "w-80 max-w-[86vw]" : "w-72"}
       `}
     >
-      <div className="flex items-center justify-between p-4 sm:p-5 border-b border-orange-200 bg-gradient-to-r from-orange-100 to-orange-50">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-            <LayoutDashboard size={16} className="text-white" />
+      <div className="pointer-events-none absolute -left-20 -top-16 h-44 w-44 rounded-full bg-orange-300/25 blur-2xl" />
+      <div className="pointer-events-none absolute -bottom-16 -right-16 h-44 w-44 rounded-full bg-amber-200/20 blur-2xl" />
+      <div className="flex h-full flex-col">
+        <div className="flex items-center justify-between px-5 pb-3 pt-5">
+          <div className="flex items-center gap-3">
+            <div className="grid h-10 w-10 place-items-center rounded-full border border-white/45 bg-white/25 shadow-inner">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-2xl font-extrabold leading-none tracking-tight">
+                Admin
+              </p>
+              <p className="text-xs text-orange-100/85">Control Center</p>
+            </div>
           </div>
-          <div className="font-bold text-orange-800">
-            <div className="text-lg">Admin</div>
-            <div className="text-xs text-orange-600 -mt-1">Panel</div>
-          </div>
+
+          {isMobile && (
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg p-1.5 text-orange-100 hover:bg-white/10"
+              aria-label="Close sidebar"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
         </div>
 
-        {isMobile && (
-          <button
-            onClick={onClose}
-            className="text-orange-600 p-1.5 rounded-full hover:bg-orange-200 transition-colors"
-            aria-label="Close sidebar"
-          >
-            <ChevronLeft size={16} />
-          </button>
-        )}
-      </div>
-
-      {/* Navigation section */}
-      <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
-        <NavLink
-          to="/admin/dashboard"
-          className={navLinkStyles}
-          onClick={handleNavClick}
-        >
-          <LayoutDashboard size={20} className="flex-shrink-0" />
-          <span className="truncate">Dashboard</span>
-        </NavLink>
-
-        <NavLink
-          to="/admin/sales-records"
-          className={navLinkStyles}
-          onClick={handleNavClick}
-        >
-          <FileText size={20} className="flex-shrink-0" />
-          <span className="truncate">Sales Records</span>
-        </NavLink>
-
-        <NavLink
-          to="/admin/sales-lookup"
-          className={navLinkStyles}
-          onClick={handleNavClick}
-        >
-          <Search size={20} className="flex-shrink-0" />
-          <span className="truncate">Sales Lookup</span>
-        </NavLink>
-
-        <NavLink
-          to="/admin/add-record"
-          className={navLinkStyles}
-          onClick={handleNavClick}
-        >
-          <PlusCircle size={20} className="flex-shrink-0" />
-          <span className="truncate">Add Record</span>
-        </NavLink>
-
-        <NavLink
-          to="/admin/profile"
-          className={navLinkStyles}
-          onClick={handleNavClick}
-        >
-          <User size={20} className="flex-shrink-0" />
-          <span className="truncate">Profile</span>
-        </NavLink>
-
-        {/* Management section */}
-        <div className="pt-4 mt-4 border-t border-orange-200">
-          <div className="px-4 py-2 text-xs font-medium text-orange-600 uppercase tracking-wider">
-            Management
-          </div>
-
+        <div className="px-4 pb-3">
           <NavLink
-            to="/admin/manage-salesperson"
-            className={navLinkStyles}
+            to="/admin/add-record"
             onClick={handleNavClick}
+            className="flex items-center justify-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-orange-900 shadow-md ring-1 ring-white/80 transition hover:bg-orange-50"
           >
-            <User size={20} className="flex-shrink-0" />
-            <span className="truncate">Manage Salesperson</span>
+            <PlusCircle className="h-4 w-4" />
+            New Entry
           </NavLink>
         </div>
-      </nav>
 
-      {/*  Footer section */}
-      <div className="p-4 border-t border-orange-200 bg-orange-25">
-        <div className="flex items-center gap-3 text-sm text-orange-600">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-          <span>System Active</span>
+        <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-2">
+          <div className="space-y-1">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              return (
+                <NavLink
+                  key={item.to}
+                  to={item.to}
+                  className={navLinkStyles}
+                  onClick={handleNavClick}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className="h-4 w-4" />
+                    <span>{item.label}</span>
+                  </span>
+                  <ChevronRight className="h-4 w-4 opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                </NavLink>
+              );
+            })}
+          </div>
+
+          <div>
+            <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-orange-100/70">
+              Management
+            </p>
+            <div className="space-y-1">
+              {managementItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    className={navLinkStyles}
+                    onClick={handleNavClick}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon className="h-4 w-4" />
+                      <span>{item.label}</span>
+                    </span>
+                    <ChevronRight className="h-4 w-4 opacity-60 transition group-hover:translate-x-0.5 group-hover:opacity-100" />
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
+        </nav>
+
+        <div className="border-t border-white/20 p-4">
+          <div className="rounded-xl border border-white/20 bg-white/10 p-3 backdrop-blur-sm">
+            <p className="text-xs font-semibold text-orange-50">
+              AstroKapoor Admin Console
+            </p>
+            <p className="mt-1 text-[11px] text-orange-100/85">
+              Monitor teams, leads, and performance in one place.
+            </p>
+          </div>
         </div>
       </div>
-    </div>
+    </aside>
   );
 };
 

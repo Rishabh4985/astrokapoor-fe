@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { Camera, Lock, Mail, User } from "lucide-react";
+import { Camera, Lock, Mail, User, Eye, EyeOff } from "lucide-react";
 import axios from "axios";
+import { useAuth } from "../../context/AuthContext";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
@@ -9,9 +10,13 @@ const api = axios.create({
 });
 
 const AdminProfile = () => {
+  const { authToken, userRole } = useAuth();
   const [adminData, setAdminData] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [formState, setFormState] = useState({
     name: "",
     currentPassword: "",
@@ -24,10 +29,11 @@ const AdminProfile = () => {
 
   useEffect(() => {
     const fetchProfile = async () => {
+      if (!authToken || userRole !== "admin") return;
+
       try {
-        const token = localStorage.getItem("authToken");
         const res = await api.get("/admin/me", {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { Authorization: `Bearer ${authToken}` },
         });
         setAdminData(res.data);
         setFormState((prev) => ({ ...prev, name: res.data.name }));
@@ -37,7 +43,7 @@ const AdminProfile = () => {
       }
     };
     fetchProfile();
-  }, []);
+  }, [authToken, userRole]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -52,12 +58,19 @@ const AdminProfile = () => {
     const { name, currentPassword, newPassword, confirmNewPassword } =
       formState;
 
-    const token = localStorage.getItem("authToken");
+    if (!authToken || userRole !== "admin") {
+      setMessage("Unauthorized access.");
+      setLoading(false);
+      return;
+    }
 
     try {
       if (currentPassword || newPassword || confirmNewPassword) {
         if (!currentPassword || !newPassword || !confirmNewPassword) {
           return setMessage("All password fields are required.");
+        }
+        if (newPassword.length < 6) {
+          return setMessage("New password must be at least 6 characters long.");
         }
         if (newPassword !== confirmNewPassword) {
           return setMessage("New passwords do not match.");
@@ -66,15 +79,15 @@ const AdminProfile = () => {
         await api.patch(
           "/admin/update-password",
           { currentPassword, newPassword },
-          { headers: { Authorization: `Bearer ${token}` } },
+          { headers: { Authorization: `Bearer ${authToken}` } },
         );
-        setMessage("Password updated successfully.");
+        setMessage("✅ Password updated successfully.");
       }
 
       const res = await api.patch(
         "/admin/me",
         { name },
-        { headers: { Authorization: `Bearer ${token}` } },
+        { headers: { Authorization: `Bearer ${authToken}` } },
       );
       setAdminData(res.data);
       setMessage("Profile updated successfully.");
@@ -163,33 +176,62 @@ const AdminProfile = () => {
             </h3>
 
             <div className="mt-3 space-y-3">
-              <input
-                type="password"
-                name="currentPassword"
-                placeholder="Current Password"
-                aria-label="Current Password"
-                className="w-full border border-orange-200 rounded-lg p-2"
-                value={formState.currentPassword}
-                onChange={handleInputChange}
-              />
-              <input
-                type="password"
-                name="newPassword"
-                placeholder="New Password"
-                aria-label="New Password"
-                className="w-full border border-orange-200 rounded-lg p-2"
-                value={formState.newPassword}
-                onChange={handleInputChange}
-              />
-              <input
-                type="password"
-                name="confirmNewPassword"
-                placeholder="Confirm New Password"
-                aria-label="Confirm New Password"
-                className="w-full border border-orange-200 rounded-lg p-2"
-                value={formState.confirmNewPassword}
-                onChange={handleInputChange}
-              />
+              <div className="relative">
+                <input
+                  type={showCurrentPassword ? "text" : "password"}
+                  name="currentPassword"
+                  placeholder="Current Password"
+                  aria-label="Current Password"
+                  className="w-full border border-orange-200 rounded-lg p-2 pr-10"
+                  value={formState.currentPassword}
+                  onChange={handleInputChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowCurrentPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                >
+                  {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showNewPassword ? "text" : "password"}
+                  name="newPassword"
+                  placeholder="New Password"
+                  aria-label="New Password"
+                  className="w-full border border-orange-200 rounded-lg p-2 pr-10"
+                  value={formState.newPassword}
+                  onChange={handleInputChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                >
+                  {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? "text" : "password"}
+                  name="confirmNewPassword"
+                  placeholder="Confirm New Password"
+                  aria-label="Confirm New Password"
+                  className="w-full border border-orange-200 rounded-lg p-2 pr-10"
+                  value={formState.confirmNewPassword}
+                  onChange={handleInputChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((prev) => !prev)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                >
+                  {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
             </div>
           </div>
         )}

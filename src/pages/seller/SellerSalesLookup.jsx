@@ -5,7 +5,11 @@ import { toast } from "react-toastify";
 
 import Excel from "../../components/shared/Excel";
 import Filters from "../../components/shared/Filters.jsx";
-import { expectedHeaders, headerLabels,categoryOptionsConfig } from "../../utils/utils.js";
+import {
+  expectedHeaders,
+  headerLabels,
+  categoryOptionsConfig,
+} from "../../utils/utils.js";
 import { formatValue } from "../../utils/formatter.js";
 
 const SellerSalesLookup = () => {
@@ -46,59 +50,62 @@ const SellerSalesLookup = () => {
   }, [sellerRecords, totalRecords]);
 
   return (
-    <div className="w-full max-w-7xl mx-auto px-4 py-6">
-      <div className="bg-white rounded-2xl shadow-lg border border-orange-100">
-        {/* Header Section */}
-        <div className="p-4 sm:p-6 border-b border-orange-200">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+    <div className="mx-auto w-full max-w-[1400px] space-y-5">
+      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
-              <h2 className="text-2xl font-bold text-orange-800 flex items-center gap-2">
-                <Table2 className="w-6 h-6" />
-                My Sales LookUp
-                <p className="text-sm text-orange-600">
-                  (showing {startRecord}–{endRecord} of {totalRecords} records)
-                </p>
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-orange-900">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-white text-orange-600 shadow-sm">
+                  <Table2 className="h-5 w-5" />
+                </span>
+                My Sales Lookup
               </h2>
+              <p className="inline-flex items-center rounded-full border border-orange-200 bg-white px-3 py-1 text-sm font-medium text-orange-700">
+                Showing {startRecord} to {endRecord} of {totalRecords} records
+              </p>
             </div>
             <div className="shrink-0">
               <Excel onExport={handleExport} />
             </div>
           </div>
-          <Filters
-            context={SellerContext} // backend fetch context
-            categoryOptionsConfig={categoryOptionsConfig}
-            showSearch={true}
-            showAdvancedToggle={true}
-          />
         </div>
 
-        {/* Table Section */}
-        <div className="relative p-4 sm:p-6">
-          <div className="overflow-auto max-h-[60vh] min-h-[300px] rounded-lg border border-orange-200">
-            <table className="min-w-full divide-y divide-orange-200 text-sm">
-              <thead className="bg-orange-100 text-orange-800 sticky top-0 z-10">
+        <div className="space-y-4 p-4 sm:p-5">
+          <Filters
+            context={SellerContext}
+            categoryOptionsConfig={categoryOptionsConfig}
+            showSearch={false}
+            showAdvancedToggle={true}
+          />
+
+          <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="sticky top-0 z-10 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
                 <tr>
                   {headers.map((key) => (
                     <th
                       key={key}
-                      className="px-3 py-3 sm:px-4 sm:py-4 font-medium whitespace-nowrap text-center border-r border-orange-200 last:border-r-0"
+                      className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-center font-semibold"
                     >
                       {headerLabels[key] || key}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-orange-100">
+              <tbody className="divide-y divide-slate-100">
                 {visibleRecords.length > 0 ? (
                   visibleRecords.map((rec, i) => (
                     <tr
                       key={i}
-                      className={`hover:bg-orange-50 transition-colors ${i % 2 === 0 ? "bg-white" : "bg-orange-25"}`}
+                      className={`transition-colors ${
+                        i % 2 === 0 ? "bg-white" : "bg-orange-50/40"
+                      } hover:bg-orange-50`}
                     >
                       {headers.map((key) => (
                         <td
                           key={key}
-                          className="px-3 py-3 sm:px-4 sm:py-4 border-r border-orange-100 last:border-r-0 whitespace-nowrap text-center text-xs sm:text-sm"
+                          className="whitespace-nowrap border-r border-slate-100 px-4 py-3 text-center text-sm"
                         >
                           {formatValue(key, rec[key])}
                         </td>
@@ -109,14 +116,14 @@ const SellerSalesLookup = () => {
                   <tr>
                     <td
                       colSpan={headers.length}
-                      className="text-center py-8 text-gray-500"
+                      className="py-10 text-center text-slate-500"
                     >
-                      <div className="space-y-2">
-                        <div className="text-lg font-medium">
+                      <div className="space-y-1">
+                        <div className="text-base font-semibold text-slate-700">
                           No matching records found
                         </div>
                         <div className="text-sm">
-                          Try adjusting your search criteria or clear filters
+                          Try adjusting filters to see more results.
                         </div>
                       </div>
                     </td>
@@ -126,40 +133,35 @@ const SellerSalesLookup = () => {
             </table>
           </div>
 
-          {/* Pagination */}
           {totalPages > 1 && (
-            <div className="sticky bottom-0 bg-white flex flex-col sm:flex-row justify-between items-center gap-4 p-4 rounded-lg border-t border-orange-300 z-10">
-              <div className="text-sm text-orange-700 text-center sm:text-left">
-                <span className="text-xs text-orange-700">
-                  (showing {startRecord}–{endRecord} of {totalRecords} records)
-                </span>
-                <span className="hidden sm:inline">
-                  {" "}
-                  (Page {page} of {totalPages})
-                </span>
+            <div className="sticky bottom-0 z-10 mt-3 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:flex-row">
+              <div className="text-xs font-medium text-orange-700 sm:text-sm">
+                Showing{" "}
+                <span className="font-semibold text-orange-800">{startRecord}</span>{" "}
+                to <span className="font-semibold text-orange-800">{endRecord}</span>{" "}
+                of <span className="font-semibold text-orange-800">{totalRecords}</span>{" "}
+                records
               </div>
 
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => goToPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors text-sm"
-                >
-                  Previous
-                </button>
+              <button
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 1}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Previous
+              </button>
 
-                <div className="px-3 py-2 bg-white border border-orange-300 rounded-lg text-sm min-w-[80px] text-center">
-                  {page} / {totalPages}
-                </div>
+              <span className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700">
+                Page {page} of {totalPages}
+              </span>
 
-                <button
-                  onClick={() => goToPage(page + 1)}
-                  disabled={page === totalPages || totalPages === 0}
-                  className="px-3 py-2 bg-orange-500 text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-orange-600 transition-colors text-sm"
-                >
-                  Next
-                </button>
-              </div>
+              <button
+                onClick={() => goToPage(page + 1)}
+                disabled={page === totalPages || totalPages === 0}
+                className="rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-orange-600 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Next
+              </button>
             </div>
           )}
         </div>

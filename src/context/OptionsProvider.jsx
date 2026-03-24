@@ -12,6 +12,12 @@ const OptionsProvider = ({ children }) => {
     state: {},
     expert: [],
     handleBy: [],
+    gems: [],
+    gems1: [],
+    gems2: [],
+    gems3: [],
+    gems4: [],
+    gemsHierarchy: {},
   });
 
   const [requiredFields, setRequiredFields] = useState([]);
@@ -28,18 +34,14 @@ const OptionsProvider = ({ children }) => {
 
         const data = await res.json();
 
-        const {
-          requiredFields: reqFields,
-          state,
-          country,
-          ...rest
-        } = data;
+        const { requiredFields: reqFields, state, country, ...rest } = data;
 
         setDropdowns({
           ...rest,
           country: country.map((c) => ({
             name: c.name,
             isoCode: c.isoCode || c.iso2,
+            phoneCode: c.phoneCode || c.phonecode || "",
           })),
           state,
         });

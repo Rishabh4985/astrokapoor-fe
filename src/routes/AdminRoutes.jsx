@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import AdminDashboard from "../pages/admin/AdminDashboard";
 import AdminProfile from "../pages/admin/AdminProfile";
@@ -11,25 +11,21 @@ import ManageSalesPerson from "../pages/admin/ManageSalesPerson";
 const AdminRoutes = () => {
   const { userRole } = useAuth();
 
-  if (userRole === null) {
-    return <div>Loading...</div>;
-  }
-
   if (userRole !== "admin") {
     return <Navigate to="/" replace />;
   }
 
   return (
     <Routes>
-      <Route path="/" element={<AdminLayout />}>
+      <Route element={<AdminLayout />}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="profile" element={<AdminProfile />} />
-        <Route path="*" element={<Navigate to="dashboard" replace />} />
         <Route path="sales-records" element={<AdminSalesRecordList />} />
         <Route path="sales-lookup" element={<AdminSalesLookup />} />
         <Route path="add-record" element={<AdminAddRecord />} />
         <Route path="manage-salesperson" element={<ManageSalesPerson />} />
+        <Route path="*" element={<Navigate to="dashboard" replace />} />
       </Route>
     </Routes>
   );

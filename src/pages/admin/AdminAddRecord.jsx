@@ -11,26 +11,26 @@ const AdminAddRecord = () => {
   };
 
   return (
-    <div className="p-6 md:p-10 bg-white shadow-lg rounded-3xl max-w-6xl mx-auto">
-      <div className="flex items-center gap-3 mb-6 text-orange-800">
-        <PlusCircle className="w-7 h-7" />
-        <h2 className="text-2xl font-extrabold tracking-tight leading-tight">
+    <div className="mx-auto w-full max-w-[1400px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-6 flex items-center gap-3 text-slate-900">
+        <PlusCircle className="h-7 w-7 text-orange-600" />
+        <h2 className="text-2xl font-extrabold leading-tight tracking-tight">
           Add New Record
         </h2>
       </div>
 
-      <div className="flex flex-col md:flex-row md:justify-start md:gap-10 gap-4 mb-8 text-sm text-orange-700">
+      <div className="mb-8 flex flex-col gap-4 text-sm text-slate-600 md:flex-row md:justify-start md:gap-10">
         <div className="flex items-center gap-2">
-          <UserPlus2 className="w-5 h-5" aria-hidden="true" />
+          <UserPlus2 className="h-5 w-5 text-orange-500" aria-hidden="true" />
           <span>Fill in customer details accurately.</span>
         </div>
         <div className="flex items-center gap-2">
-          <ClipboardEdit className="w-5 h-5" aria-hidden="true" />
+          <ClipboardEdit className="h-5 w-5 text-orange-500" aria-hidden="true" />
           <span>Ensure all required fields are completed.</span>
         </div>
       </div>
 
-      <div className="border-t border-orange-200 pt-6">
+      <div className="border-t border-slate-200 pt-6">
         <AddRecordForm onAdd={handleAddRecord} />
       </div>
     </div>

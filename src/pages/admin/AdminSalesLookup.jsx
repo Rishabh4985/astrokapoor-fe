@@ -4,8 +4,12 @@ import OptionsContext from "../../context/OptionsContext";
 import Excel from "../../components/shared/Excel";
 import Filters from "../../components/shared/Filters";
 import { toast } from "react-toastify";
-import { Sparkles } from "lucide-react";
-import { expectedHeaders, headerLabels,categoryOptionsConfig } from "../../utils/utils.js";
+import { Table2 } from "lucide-react";
+import {
+  expectedHeaders,
+  headerLabels,
+  categoryOptionsConfig,
+} from "../../utils/utils.js";
 import { formatValue } from "../../utils/formatter.js";
 
 const AdminSalesLookup = () => {
@@ -19,6 +23,7 @@ const AdminSalesLookup = () => {
     itemsPerPage = 100,
     goToPage,
     importRecords,
+    fetchAllRecordsForExport,
   } = useContext(AdminContext);
 
   // =============================
@@ -78,9 +83,10 @@ const AdminSalesLookup = () => {
     }
   };
 
-  const handleExport = () => {
-    toast.success(`Exporting ${flattenedRecords.length} records`);
-    return flattenedRecords;
+  const handleExport = async () => {
+    const exportData = await fetchAllRecordsForExport();
+    toast.success(`Exporting ${exportData.length} records`);
+    return exportData;
   };
 
   if (optionsLoading) {
@@ -92,104 +98,113 @@ const AdminSalesLookup = () => {
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-orange-50 via-white to-orange-100 rounded-2xl shadow-xl mb-8 border border-orange-200 relative overflow-hidden">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-6 relative z-10">
-        <h2 className="text-2xl font-extrabold text-orange-800 flex items-center gap-2 drop-shadow-sm">
-          <Sparkles className="w-6 h-6 text-yellow-500 animate-ping" />
-          Admin Sales Lookup
-          <span className="text-sm font-normal text-orange-600">
-            (showing {startIndex} to {endIndex} of {totalRecords})
-          </span>
-        </h2>
+    <div className="mx-auto w-full max-w-[1400px] space-y-5">
+      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-orange-900">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-white text-orange-600 shadow-sm">
+                  <Table2 className="h-5 w-5" />
+                </span>
+                Sales Lookup
+              </h2>
+              <p className="inline-flex items-center rounded-full border border-orange-200 bg-white px-3 py-1 text-sm font-medium text-orange-700">
+                Showing {startIndex} to {endIndex} of {totalRecords} records
+              </p>
+            </div>
 
-        <Excel onImport={handleImport} onExport={handleExport} />
-      </div>
+            <Excel onImport={handleImport} onExport={handleExport} />
+          </div>
+        </div>
 
-      {/* Filters */}
-      <div className="bg-white/70 border border-orange-200 backdrop-blur-sm rounded-xl p-3 mb-6 shadow-md relative z-10">
-        <Filters
-          context={AdminContext}
-          categoryOptionsConfig={categoryOptionsConfig}
-          showSearch={true}
-          showAdvancedToggle={true}
-        />
-      </div>
+        <div className="space-y-4 p-4 sm:p-5">
+          <Filters
+            context={AdminContext}
+            categoryOptionsConfig={categoryOptionsConfig}
+            showSearch={false}
+            showAdvancedToggle={true}
+          />
 
-      {/* Table */}
-      <div className="overflow-auto max-h-[500px] min-h-[300px] rounded-xl border border-orange-200 shadow-inner relative z-10">
-        <table className="min-w-full divide-y divide-orange-200 text-sm">
-          <thead className="bg-gradient-to-r from-orange-200 to-orange-100 text-orange-900 sticky top-0 z-10 shadow-sm">
-            <tr>
-              {headers.map((key) => (
-                <th
-                  key={key}
-                  className="px-4 py-2 font-semibold whitespace-nowrap text-center border-r border-orange-200"
-                >
-                  {headerLabels[key] || key}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {flattenedRecords.length > 0 ? (
-              flattenedRecords.map((rec, idx) => (
-                <tr
-                  key={idx}
-                  className={`transition-colors duration-200 ${
-                    idx % 2 === 0
-                      ? "bg-white hover:bg-orange-50"
-                      : "bg-orange-50 hover:bg-orange-100"
-                  }`}
-                >
+          <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+            <table className="min-w-full divide-y divide-slate-200 text-sm">
+              <thead className="sticky top-0 z-10 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
+                <tr>
                   {headers.map((key) => (
-                    <td
+                    <th
                       key={key}
-                      className="px-4 py-2 border-r border-orange-100 whitespace-nowrap text-center"
+                      className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-center font-semibold"
                     >
-                      {formatValue(key, rec[key])}
-                    </td>
+                      {headerLabels[key] || key}
+                    </th>
                   ))}
                 </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={headers.length}
-                  className="text-center py-6 text-gray-500"
-                >
-                  No matching records found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+              </thead>
+              <tbody>
+                {flattenedRecords.length > 0 ? (
+                  flattenedRecords.map((rec, idx) => (
+                    <tr
+                      key={idx}
+                      className={`transition-colors ${
+                        idx % 2 === 0 ? "bg-white" : "bg-orange-50/40"
+                      } hover:bg-orange-50`}
+                    >
+                      {headers.map((key) => (
+                        <td
+                          key={key}
+                          className="whitespace-nowrap border-r border-slate-100 px-4 py-3 text-center"
+                        >
+                          {formatValue(key, rec[key])}
+                        </td>
+                      ))}
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td
+                      colSpan={headers.length}
+                      className="py-10 text-center text-slate-500"
+                    >
+                      No matching records found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {/* Pagination */}
-      <div className="sticky bottom-0 bg-white flex justify-center items-center gap-4 py-2 border-t border-orange-300 z-10">
-        <button
-          onClick={() => goToPage(page - 1)}
-          disabled={page <= 1}
-          className="px-4 py-2 rounded-lg bg-orange-300 hover:bg-orange-400 transition text-white font-semibold disabled:opacity-50 shadow-md"
-        >
-          Previous
-        </button>
+          {totalPages > 1 && (
+            <div className="sticky bottom-0 z-10 mt-3 flex flex-col items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white/95 px-3 py-3 backdrop-blur sm:flex-row">
+              <div className="text-xs font-medium text-orange-700 sm:text-sm">
+                Showing{" "}
+                <span className="font-semibold text-orange-800">{startIndex}</span>{" "}
+                to <span className="font-semibold text-orange-800">{endIndex}</span>{" "}
+                of <span className="font-semibold text-orange-800">{totalRecords}</span>{" "}
+                records
+              </div>
 
-        <span className="flex items-center px-2 font-semibold text-orange-700">
-          Page {page} of {totalPages}
-          <span className="text-sm ml-2 text-orange-600">
-            (showing {startIndex} to {endIndex} of {totalRecords})
-          </span>
-        </span>
+              <button
+                onClick={() => goToPage(page - 1)}
+                disabled={page <= 1}
+                className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Previous
+              </button>
 
-        <button
-          onClick={() => goToPage(page + 1)}
-          disabled={page >= totalPages}
-          className="px-4 py-2 rounded-lg bg-orange-500 hover:bg-orange-600 transition text-white font-semibold disabled:opacity-50 shadow-md"
-        >
-          Next
-        </button>
+              <span className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 text-sm font-semibold text-orange-700">
+                Page {page} of {totalPages}
+              </span>
+
+              <button
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages}
+                className="rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-orange-600 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-45"
+              >
+                Next
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -10,3 +10,31 @@ body {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* Remove number input arrows */
+
+/* Chrome, Safari, Edge */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Firefox */
+input[type="number"] {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* Modern date field refinements */
+input.modern-date-input[type="date"],
+input.modern-date-input[type="month"] {
+  color-scheme: light;
+}
+
+input.modern-date-input[type="date"]::-webkit-calendar-picker-indicator,
+input.modern-date-input[type="month"]::-webkit-calendar-picker-indicator {
+  opacity: 0;
+  cursor: pointer;
+}

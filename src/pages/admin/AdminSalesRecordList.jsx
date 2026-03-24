@@ -15,6 +15,11 @@ import AdminPagination from "../../components/admin/AdminPagination.jsx";
 import AdminTable from "../../components/admin/AdminTable.jsx";
 import OptionsContext from "../../context/OptionsContext";
 import { formatValue } from "../../utils/formatter.js";
+import {
+  gemFieldOrder,
+  getGemOptionsForField,
+  hasGemSelection,
+} from "../../utils/gemsHierarchyUtils.js";
 
 const AdminSalesRecordList = () => {
   const {
@@ -35,6 +40,7 @@ const AdminSalesRecordList = () => {
     error,
     clearError,
     importRecords,
+    fetchAllRecordsForExport,
   } = useContext(AdminContext);
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState({});
@@ -42,23 +48,55 @@ const AdminSalesRecordList = () => {
   const [isDeleting, setIsDeleting] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const hasGemParentSelections = (fieldName, selections) => {
+    const fieldIndex = gemFieldOrder.indexOf(fieldName);
+    if (fieldIndex <= 0) return true;
+
+    return gemFieldOrder
+      .slice(0, fieldIndex)
+      .every((parentField) => hasGemSelection(selections?.[parentField]));
+  };
+
   const getDropdownOptionsForField = (fieldName) => {
+    if (gemFieldOrder.includes(fieldName)) {
+      const originalRecord =
+        flattenedRecords.find((r) => r._id === editingId) || {};
+      const selections = { ...originalRecord, ...draft };
+
+      if (!hasGemParentSelections(fieldName, selections)) return [];
+
+      return getGemOptionsForField(
+        fieldName,
+        selections,
+        dropdowns.gemsHierarchy || {},
+        dropdowns.gems || [],
+      ).map((item) => ({
+        label: item,
+        value: item,
+      }));
+    }
+
     if (fieldName === "country") {
-      return dropdowns.country?.map((item) => ({
-        label: item.name,
-        value: item.name,
-      })) || [];
+      return (
+        dropdowns.country?.map((item) => ({
+          label: item.name,
+          value: item.name,
+        })) || []
+      );
     }
 
     if (fieldName === "state") {
-      const record = flattenedRecords.find((r) => r._id === editingId);
-      if (!record || !record.country) return [];
-      
+      // Use draft for edited values, fall back to original record
+      const countryValue =
+        draft.country ||
+        flattenedRecords.find((r) => r._id === editingId)?.country;
+      if (!countryValue) return [];
+
       const countryObj = dropdowns.country?.find(
-        (c) => c.name.toLowerCase() === record.country.toLowerCase(),
+        (c) => c.name.toLowerCase() === countryValue.toLowerCase(),
       );
       if (!countryObj) return [];
-      
+
       const states = getStatesByCountry(countryObj.isoCode);
       return states.map((item) => ({
         label: item,
@@ -93,6 +131,18 @@ const AdminSalesRecordList = () => {
         };
       }
     }
+
+    // Validate customerName contains only alphabets and spaces
+    if (fieldName === "customerName" && value) {
+      const nameRegex = /^[a-zA-Z\s]{2,}$/;
+      if (!nameRegex.test(value)) {
+        return {
+          isValid: false,
+          errorMessage: "Customer name can only contain alphabets and spaces",
+        };
+      }
+    }
+
     return { isValid: true, errorMessage: "" };
   };
 
@@ -164,7 +214,27 @@ const AdminSalesRecordList = () => {
   };
 
   const handleEditChange = (field, value) => {
-    setDraft((prev) => ({ ...prev, [field]: value }));
+    if (gemFieldOrder.includes(field)) {
+      const candidate = { ...draft, [field]: value };
+      const fieldIndex = gemFieldOrder.indexOf(field);
+      const canSelect = hasGemParentSelections(field, candidate);
+
+      if (fieldIndex > 0 && value && !canSelect) {
+        toast.info("Select parent gem fields first");
+        return;
+      }
+    }
+
+    setDraft((prev) => {
+      const next = { ...prev, [field]: value };
+      if (!gemFieldOrder.includes(field)) return next;
+
+      const changedIndex = gemFieldOrder.indexOf(field);
+      for (let i = changedIndex + 1; i < gemFieldOrder.length; i += 1) {
+        next[gemFieldOrder[i]] = "";
+      }
+      return next;
+    });
 
     // Validate field in real-time
     const validation = validateFieldValue(field, value);
@@ -243,15 +313,20 @@ const AdminSalesRecordList = () => {
     }
   };
 
-  const handleExport = () => {
-    if (!records || records.length === 0) {
+  const handleExport = async () => {
+    const exportData = await fetchAllRecordsForExport();
+
+    if (!exportData || exportData.length === 0) {
       toast.warning("No records available to export");
-      return null;
+      return [];
     }
 
-    toast.success(`Exporting ${records.length} records`);
-    return records;
+    toast.success(`Exporting ${exportData.length} records`);
+    return exportData;
   };
+
+  const startIndex = (page - 1) * 100 + 1;
+  const endIndex = Math.min(page * 100, totalRecords);
 
   useEffect(() => {
     if (error) {
@@ -269,117 +344,125 @@ const AdminSalesRecordList = () => {
   }
 
   return (
-    <div className="p-6 bg-white rounded-2xl shadow-lg mb-8 border border-orange-100">
-      {/* HEADER */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-        <h2 className="text-2xl font-bold text-orange-800 flex items-center gap-2">
-          <Table2 className="w-6 h-6" /> Sales Records
-          <span className="text-sm font-normal text-orange-600">
-            ({records.length} of {totalRecords} records)
-          </span>
-        </h2>
-        <Excel
-          onImport={handleImport}
-          onExport={records.length ? handleExport : null}
-        />
-      </div>
-
-      {/* FILTERS */}
-      <div className="bg-white/70 border border-orange-200 backdrop-blur-sm rounded-xl p-3 mb-6 shadow-md relative z-10">
-        <Filters
-          context={AdminContext}
-          categoryOptionsConfig={categoryOptionsConfig}
-          showSearch={true}
-          showAdvancedToggle={true}
-        />
-      </div>
-
-      {/* TABLE */}
-      <AdminTable
-        headers={headers}
-        records={records}
-        editingId={editingId}
-        draft={draft}
-        fieldErrors={fieldErrors}
-        isSaving={isSaving}
-        isDeleting={isDeleting}
-        requiredFields={requiredFields}
-        isFieldEditable={isFieldEditable}
-        getFieldLabel={getFieldLabel}
-        getDropdownOptionsForField={getDropdownOptionsForField}
-        formatValue={formatValue}
-        startEdit={startEdit}
-        cancelEdit={cancelEdit}
-        saveEdit={saveEdit}
-        handleEditChange={handleEditChange}
-        renderActions={(record, isEditing) => {
-          if (isEditing) {
-            return (
-              <div className="flex justify-center gap-2">
-                <button
-                  onClick={saveEdit}
-                  disabled={isSaving || Object.keys(fieldErrors).length > 0}
-                  className="p-1.5 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 transition"
-                >
-                  {isSaving ? (
-                    <span className="w-4 h-4 inline-block border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                </button>
-                <button
-                  onClick={cancelEdit}
-                  disabled={isSaving}
-                  className="p-1.5 bg-gray-500 text-white rounded hover:bg-gray-600 disabled:opacity-50 transition"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            );
-          }
-
-          return (
-            <div className="flex justify-center gap-2">
-              <button
-                onClick={() => startEdit(record)}
-                className="p-1.5 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
-              >
-                <Edit2 className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => handleDelete(record._id)}
-                disabled={isDeleting === record._id}
-                className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 transition"
-              >
-                {isDeleting === record._id ? (
-                  <span className="w-4 h-4 inline-block border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Trash2 className="w-4 h-4" />
-                )}
-              </button>
+    <div className="mx-auto w-full max-w-[1400px] space-y-5">
+      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <h2 className="flex items-center gap-3 text-2xl font-black tracking-tight text-orange-900">
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-orange-200 bg-white text-orange-600 shadow-sm">
+                  <Table2 className="h-5 w-5" />
+                </span>
+                Sales Records
+              </h2>
+              <p className="inline-flex items-center rounded-full border border-orange-200 bg-white px-3 py-1 text-sm font-medium text-orange-700">
+                Showing {startIndex} to {endIndex} of {totalRecords} records
+              </p>
             </div>
-          );
-        }}
-      />
-
-      <AdminPagination
-        currentPage={page}
-        totalPages={totalPages}
-        totalItems={totalRecords}
-        itemsPerPage={100}
-        onPrev={() => goToPage(page - 1)}
-        onNext={() => goToPage(page + 1)}
-      />
-
-      {/* LEGEND */}
-      <div className="mt-4 flex gap-4 text-xs text-gray-600">
-        <div className="flex items-center gap-1">
-          <span className="text-red-500 font-bold">*</span>
-          <span>Required Field</span>
+            <Excel onImport={handleImport} onExport={handleExport} />
+          </div>
         </div>
-        <div className="flex items-center gap-1">
-          <Lock className="w-3 h-3 text-gray-400" />
-          <span>Non-Editable Field</span>
+
+        <div className="space-y-4 p-4 sm:p-5">
+          <Filters
+            context={AdminContext}
+            categoryOptionsConfig={categoryOptionsConfig}
+            showSearch={false}
+            showAdvancedToggle={true}
+          />
+
+          <AdminTable
+            headers={headers}
+            records={records}
+            editingId={editingId}
+            draft={draft}
+            fieldErrors={fieldErrors}
+            isSaving={isSaving}
+            isDeleting={isDeleting}
+            requiredFields={requiredFields}
+            isFieldEditable={isFieldEditable}
+            getFieldLabel={getFieldLabel}
+            getDropdownOptionsForField={getDropdownOptionsForField}
+            isDropdownField={(field) =>
+              gemFieldOrder.includes(field) ||
+              field === "country" ||
+              field === "state" ||
+              Array.isArray(dropdowns?.[field])
+            }
+            formatValue={formatValue}
+            startEdit={startEdit}
+            cancelEdit={cancelEdit}
+            saveEdit={saveEdit}
+            handleEditChange={handleEditChange}
+            renderActions={(record, isEditing) => {
+              if (isEditing) {
+                return (
+                  <div className="flex justify-center gap-2">
+                    <button
+                      onClick={saveEdit}
+                      disabled={isSaving || Object.keys(fieldErrors).length > 0}
+                      className="rounded-lg bg-gradient-to-r from-emerald-500 to-emerald-600 p-1.5 text-white shadow-sm transition hover:from-emerald-600 hover:to-emerald-700 disabled:opacity-50"
+                    >
+                      {isSaving ? (
+                        <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      ) : (
+                        <Check className="h-4 w-4" />
+                      )}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      disabled={isSaving}
+                      className="rounded-lg bg-slate-500 p-1.5 text-white shadow-sm transition hover:bg-slate-600 disabled:opacity-50"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="flex justify-center gap-2">
+                  <button
+                    onClick={() => startEdit(record)}
+                    className="rounded-lg bg-gradient-to-r from-orange-500 to-amber-500 p-1.5 text-white shadow-sm transition hover:from-orange-600 hover:to-amber-600"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(record._id)}
+                    disabled={isDeleting === record._id}
+                    className="rounded-lg bg-red-500 p-1.5 text-white shadow-sm transition hover:bg-red-600 disabled:opacity-50"
+                  >
+                    {isDeleting === record._id ? (
+                      <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              );
+            }}
+          />
+
+          <AdminPagination
+            currentPage={page}
+            totalPages={totalPages}
+            totalItems={totalRecords}
+            itemsPerPage={100}
+            onPrev={() => goToPage(page - 1)}
+            onNext={() => goToPage(page + 1)}
+          />
+
+          <div className="flex flex-wrap gap-4 text-xs text-slate-600">
+            <div className="flex items-center gap-1">
+              <span className="font-bold text-red-500">*</span>
+              <span>Required Field</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Lock className="h-3 w-3 text-slate-400" />
+              <span>Non-Editable Field</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,42 +1,121 @@
-import React from "react";
-import {
-  PieChart,
-  Pie,
-  Cell,
-  Tooltip,
-  ResponsiveContainer,
-  Legend,
-} from "recharts";
+import React, { useMemo } from "react";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { PieChartIcon } from "lucide-react";
 
-const COLORS = ["#16a34a", "#ea580c"];
+const COLORS = {
+  sales: "#22c55e",
+  refunds: "#f97316",
+};
 
-const SalesVsRefundChart = ({ data = [] }) => {
-  const isEmpty = !data.length || data.every((d) => d.value === 0);
+const SalesVsRefundChart = ({ data = [], loading = false }) => {
+  const { sales, refunds } = useMemo(() => {
+    return (data || []).reduce(
+      (acc, item) => {
+        const key = (item?.name || "").toString().toLowerCase();
+        const value = Number(item?.value) || 0;
+        if (key.includes("refund")) acc.refunds += value;
+        else acc.sales += value;
+        return acc;
+      },
+      { sales: 0, refunds: 0 },
+    );
+  }, [data]);
 
-  if (isEmpty)
-    return <div className="p-6">No sales vs refund data available</div>;
+  const total = sales + refunds;
+  const chartData =
+    total > 0
+      ? [
+          { name: "Sales", value: sales, color: COLORS.sales },
+          { name: "Refunds", value: refunds, color: COLORS.refunds },
+        ].filter((item) => item.value > 0)
+      : [];
+
+  const isEmpty = total <= 0;
+  const salesPct = total > 0 ? Math.round((sales / total) * 100) : 0;
+  const refundsPct = total > 0 ? Math.round((refunds / total) * 100) : 0;
 
   return (
-    <div className="bg-orange-50 border border-orange-200 rounded-2xl shadow-md p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <PieChartIcon className="w-5 h-5 text-orange-700" />
-        <h3 className="text-lg font-semibold text-orange-800 italic">
-          Sales vs Refund
-        </h3>
+    <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 shadow-sm sm:p-6">
+      <div className="mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-emerald-400 to-orange-400" />
+      <div className="mb-4 flex items-center gap-2">
+        <PieChartIcon className="h-5 w-5 text-slate-700" />
+        <h3 className="text-lg font-semibold text-slate-800">Sales vs Refund</h3>
       </div>
 
-      <ResponsiveContainer width="100%" height={300}>
-        <PieChart>
-          <Pie data={data} dataKey="value" outerRadius={80}>
-            {data.map((entry, index) => (
-              <Cell key={index} fill={COLORS[index % COLORS.length]} />
-            ))}
-          </Pie>
-          <Tooltip />
-          <Legend />
-        </PieChart>
-      </ResponsiveContainer>
+      {loading ? (
+        <div className="flex h-[320px] flex-col items-center justify-center gap-2 text-slate-500">
+          <PieChartIcon className="h-10 w-10 animate-pulse opacity-40" />
+          <p>Loading chart...</p>
+        </div>
+      ) : isEmpty ? (
+        <div className="flex h-[320px] flex-col items-center justify-center gap-2 text-slate-500">
+          <PieChartIcon className="h-10 w-10 opacity-40" />
+          <p>No sales/refund data available</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="relative h-[230px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="value"
+                  nameKey="name"
+                  innerRadius={66}
+                  outerRadius={96}
+                  paddingAngle={4}
+                  cornerRadius={10}
+                  stroke="none"
+                >
+                  {chartData.map((entry) => (
+                    <Cell key={entry.name} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value) => new Intl.NumberFormat("en-IN").format(Number(value))}
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid #e2e8f0",
+                    backgroundColor: "#ffffff",
+                  }}
+                />
+              </PieChart>
+            </ResponsiveContainer>
+
+            <div className="pointer-events-none absolute inset-0 grid place-items-center">
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Total
+                </p>
+                <p className="text-2xl font-black text-slate-900">
+                  {new Intl.NumberFormat("en-IN").format(total)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+                Sales
+              </p>
+              <p className="text-xl font-bold text-emerald-800">
+                {new Intl.NumberFormat("en-IN").format(sales)}
+              </p>
+              <p className="text-xs text-emerald-700/80">{salesPct}% share</p>
+            </div>
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+                Refunds
+              </p>
+              <p className="text-xl font-bold text-orange-800">
+                {new Intl.NumberFormat("en-IN").format(refunds)}
+              </p>
+              <p className="text-xs text-orange-700/80">{refundsPct}% share</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

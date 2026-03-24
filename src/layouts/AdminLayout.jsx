@@ -26,7 +26,7 @@ const AdminLayout = () => {
 
   //Toggle Sidebar
   const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
+    setIsSidebarOpen((prev) => !prev);
   };
 
   //Close Sidebar
@@ -38,7 +38,7 @@ const AdminLayout = () => {
 
   return (
     <AdminProvider>
-      <div className="flex min-h-screen bg-orange-50">
+      <div className="flex min-h-screen bg-slate-100">
         {isMobile && isSidebarOpen && (
           <div
             className="fixed inset-0 z-30 bg-black bg-opacity-50 lg:hidden"
@@ -70,10 +70,8 @@ const AdminLayout = () => {
             isSidebarOpen={isSidebarOpen}
           />
 
-          <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto bg-white m-2 sm:m-3 md:m-4 rounded-lg shadow-sm">
-            <div className="max-w-full">
-              <Outlet />
-            </div>
+          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+            <Outlet />
           </main>
         </div>
       </div>

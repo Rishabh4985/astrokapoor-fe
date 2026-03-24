@@ -34,7 +34,7 @@ const SellerLayout = () => {
 
   return (
     <SellerProvider>
-      <div className="flex min-h-screen bg-gradient-to-br from-orange-50 to-orange-100">
+      <div className="flex min-h-screen bg-slate-100">
         {isMobile && isSidebarOpen && (
           <div
             className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden"
@@ -65,10 +65,8 @@ const SellerLayout = () => {
             toggleSidebar={toggleSidebar}
           />
 
-          <main className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
-            <div className="bg-white rounded-xl shadow-sm border border-orange-100 min-h-full p-4 sm:p-6">
-              <Outlet />
-            </div>
+          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+            <Outlet />
           </main>
         </div>
       </div>

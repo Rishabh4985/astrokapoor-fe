@@ -1,6 +1,6 @@
 export const nonEditableFields = [
   "transactionId",
-  "dateOfPayment",
+  // "dateOfPayment",
   "handlerId",
 ];
 
@@ -16,8 +16,6 @@ export const hiddenFields = [
   "feedbackComment",
   "airBillNo",
   "productsName",
-  "gems3",
-  "gems4",
 ];
 
 export const expectedHeaders = {
@@ -27,25 +25,25 @@ export const expectedHeaders = {
   pendingAmount: "",
   refund: "",
   status: "",
-  service: "",
+  service: [],
   mobile1: "",
   mobile2: "",
   email1: "",
   email2: "",
   expert: "",
   handlerId: "",
-  handleBy: "",
+  handleBy: [],
   mode: "",
   country: "",
   state: "",
   transactionId: "",
   sheet: "",
   remark: "",
-  gems: "",
-  gems1: "",
-  gems2: "",
-  gems3: "",
-  gems4: "",
+  gems: [],
+  gems1: [],
+  gems2: [],
+  gems3: [],
+  gems4: [],
   communication: "",
   solutions: "",
   solDetails: "",
@@ -59,7 +57,7 @@ export const expectedHeaders = {
   airBillNo: "",
   productsName: "",
   skuNo: "",
-  category: "",
+  category: [],
 };
 
 export const headerLabels = {
@@ -114,4 +112,9 @@ export const categoryOptionsConfig = [
   { key: "handleBy", label: "Handled By" },
   { key: "expert", label: "Expert" },
   { key: "country", label: "Country" },
+  { key: "gems", label: "Gems" },
+  { key: "gems1", label: "Gems 1" },
+  { key: "gems2", label: "Gems 2" },
+  { key: "gems3", label: "Gems 3" },
+  { key: "gems4", label: "Gems 4" },
 ];

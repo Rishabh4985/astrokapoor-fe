@@ -36,6 +36,10 @@ const LoginComponent = ({ onLogin }) => {
       localStorage.setItem("authToken", token);
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("userRole", role);
+      
+      // Also store in sessionStorage for current session isolation
+      sessionStorage.setItem("sessionAuthToken", token);
+      sessionStorage.setItem("sessionUserRole", role);
 
       setError("");
       onLogin(role, token, user);

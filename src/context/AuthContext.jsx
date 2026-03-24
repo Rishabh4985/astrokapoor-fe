@@ -3,6 +3,14 @@ import { createContext, useContext, useState, useCallback } from "react";
 const safeStorage = {
   getItem: (key) => {
     try {
+      // Check sessionStorage first for auth tokens
+      if (key === "sessionAuthToken" || key === "sessionUserRole") {
+        const item = sessionStorage.getItem(key);
+        if (!item) return null;
+        return item;
+      }
+      
+      // Fall back to localStorage for persistent data
       const item = localStorage.getItem(key);
       if (!item) return null;
       try {
@@ -31,6 +39,10 @@ const safeStorage = {
   removeItem: (key) => {
     try {
       localStorage.removeItem(key);
+      // Also remove from sessionStorage if exists
+      if (key === "sessionAuthToken" || key === "sessionUserRole") {
+        sessionStorage.removeItem(key);
+      }
     } catch (error) {
       console.warn(`Failed to remove localStorage item ${key}:`, error);
     }
@@ -53,11 +65,15 @@ AuthContext.displayName = "AuthContext";
 
 export const AuthProvider = ({ children }) => {
   const [userRole, setUserRole] = useState(() => {
-    const role = safeStorage.getItem("role");
+    const sessionRole = sessionStorage.getItem("sessionUserRole");
+    if (sessionRole) return sessionRole;
+    const role = safeStorage.getItem("userRole");
     return role && typeof role === "string" ? role : null;
   });
 
   const [authToken, setAuthToken] = useState(() => {
+    const sessionToken = sessionStorage.getItem("sessionAuthToken");
+    if (sessionToken) return sessionToken;
     const token = safeStorage.getItem("authToken");
     return token && typeof token === "string" ? token : null;
   });
@@ -79,7 +95,12 @@ export const AuthProvider = ({ children }) => {
       setUserRole(role);
       setAuthToken(token);
 
-      safeStorage.setItem("role", role);
+      // Store in sessionStorage for tab isolation
+      sessionStorage.setItem("sessionAuthToken", token);
+      sessionStorage.setItem("sessionUserRole", role);
+      
+      // Store in localStorage for persistence
+      safeStorage.setItem("userRole", role);
       safeStorage.setItem("authToken", token);
 
       if (role === "seller" && sellerData) {
@@ -109,8 +130,13 @@ export const AuthProvider = ({ children }) => {
       setAuthToken(null);
       setCurrentSeller(null);
 
+      // Clear sessionStorage for current tab session
+      sessionStorage.removeItem("sessionAuthToken");
+      sessionStorage.removeItem("sessionUserRole");
+
+      // Clear localStorage
       const keysToRemove = [
-        "role",
+        "userRole",
         "authToken",
         "currentSeller",
         "isAdminLoggedIn",

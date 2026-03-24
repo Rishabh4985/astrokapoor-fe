@@ -12,11 +12,12 @@ const AdminProvider = ({ children }) => {
   // Records state
   const [records, setRecords] = useState([]);
   const [page, setPage] = useState(1);
-  const [limit] = useState(100);
   const [totalPages, setTotalPages] = useState(1);
   const [totalRecords, setTotalRecords] = useState(0);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState({});
+
+  const limit = 100;
 
   const isMountedRef = useRef(true);
   useEffect(() => {
@@ -28,9 +29,15 @@ const AdminProvider = ({ children }) => {
 
   const formatDate = useCallback((date) => {
     if (!date) return "";
+
     const d = new Date(date);
-    if (isNaN(d)) return "";
-    return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+    if (isNaN(d.getTime())) return "";
+
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+
+    return `${day}/${month}/${year}`;
   }, []);
 
   // Clean record and remove unused fields
@@ -47,6 +54,23 @@ const AdminProvider = ({ children }) => {
     [formatDate],
   );
 
+  const appendFilterParams = useCallback((params, appliedFilters = {}) => {
+    Object.entries(appliedFilters).forEach(([key, value]) => {
+      if (value === null || value === "" || value === "all") return;
+
+      const paramKey = key === "query" ? "search" : key;
+      if (Array.isArray(value)) {
+        value
+          .map((item) => item?.toString().trim())
+          .filter(Boolean)
+          .forEach((item) => params.append(paramKey, item));
+        return;
+      }
+
+      params.append(paramKey, value.toString().trim());
+    });
+  }, []);
+
   // Fetch records with filters + pagination
   const fetchRecords = useCallback(
     async (pageNumber = 1, appliedFilters = {}) => {
@@ -56,13 +80,7 @@ const AdminProvider = ({ children }) => {
         setError(null);
 
         const params = new URLSearchParams({ page: pageNumber, limit });
-        Object.entries(appliedFilters).forEach(([key, value]) => {
-          if (!value || value === "all") return;
-          params.append(
-            key === "query" ? "search" : key,
-            value.toString().trim(),
-          );
-        });
+        appendFilterParams(params, appliedFilters);
 
         const res = await axios.get(
           `${API_BASE}/records/all?${params.toString()}`,
@@ -89,7 +107,52 @@ const AdminProvider = ({ children }) => {
         if (isMountedRef.current) setLoading(false);
       }
     },
-    [authToken, limit, cleanRecord],
+    [authToken, limit, cleanRecord, appendFilterParams],
+  );
+
+  const fetchAllRecordsForExport = useCallback(
+    async (appliedFilters = filters) => {
+      if (!authToken) return [];
+
+      const pageLimit = 200;
+      const allRecords = [];
+      let exportPage = 1;
+      let totalPages = 1;
+
+      try {
+        do {
+          const params = new URLSearchParams({
+            page: exportPage,
+            limit: pageLimit,
+          });
+          appendFilterParams(params, appliedFilters);
+
+          const res = await axios.get(
+            `${API_BASE}/records/all?${params.toString()}`,
+            {
+              headers: { Authorization: `Bearer ${authToken}` },
+            },
+          );
+
+          const cleaned = Array.isArray(res.data.records)
+            ? res.data.records.map(cleanRecord)
+            : [];
+
+          allRecords.push(...cleaned);
+
+          totalPages = Math.max(res.data.totalPages || 1, 1);
+          exportPage += 1;
+        } while (exportPage <= totalPages);
+
+        return allRecords;
+      } catch (err) {
+        console.error("Failed to fetch all records for export", err);
+        throw new Error(
+          err.response?.data?.message || "Failed to fetch records for export",
+        );
+      }
+    },
+    [authToken, cleanRecord, filters, appendFilterParams],
   );
 
   // Trigger fetch when filters or page changes
@@ -163,9 +226,26 @@ const AdminProvider = ({ children }) => {
       if (!authToken) return;
       try {
         setError(null);
+
+        const updatePayload = { ...partialUpdate };
+
+        if (typeof updatePayload.dateOfPayment === "string") {
+          const trimmedDate = updatePayload.dateOfPayment.trim();
+
+          if (trimmedDate.includes("/")) {
+            const [day, month, year] = trimmedDate.split("/");
+            updatePayload.dateOfPayment = new Date(`${year}-${month}-${day}`);
+          } else if (trimmedDate) {
+            const parsedDate = new Date(trimmedDate);
+            if (!Number.isNaN(parsedDate.getTime())) {
+              updatePayload.dateOfPayment = parsedDate;
+            }
+          }
+        }
+
         const res = await axios.patch(
           `${API_BASE}/records/${id}`,
-          partialUpdate,
+          updatePayload,
           {
             headers: { Authorization: `Bearer ${authToken}` },
           },
@@ -275,9 +355,17 @@ const AdminProvider = ({ children }) => {
         );
 
         // If no valid filters, skip adding query params (prevents empty fetch issues)
-        validFilters.forEach(([key, value]) =>
-          params.append(key, value.toString().trim()),
-        );
+        validFilters.forEach(([key, value]) => {
+          if (Array.isArray(value)) {
+            value
+              .map((item) => item?.toString().trim())
+              .filter(Boolean)
+              .forEach((item) => params.append(key, item));
+            return;
+          }
+
+          params.append(key, value.toString().trim());
+        });
 
         const queryString = params.toString();
         const url = queryString
@@ -420,6 +508,7 @@ const AdminProvider = ({ children }) => {
         clearChartCache,
         setRecords,
         importRecords,
+        fetchAllRecordsForExport,
       }}
     >
       {children}

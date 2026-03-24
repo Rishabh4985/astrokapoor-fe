@@ -28,24 +28,24 @@ const SellerAddRecord = () => {
   };
 
   return (
-    <div className="p-6 md:p-10 bg-white shadow-md rounded-2xl">
-      <div className="flex items-center gap-3 mb-6 text-orange-800">
-        <PlusCircle className="w-7 h-7" />
-        <h2 className="text-2xl font-bold">Add New Record</h2>
+    <div className="mx-auto w-full max-w-[1400px] rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-6">
+      <div className="mb-6 flex items-center gap-3 text-slate-900">
+        <PlusCircle className="h-7 w-7 text-orange-600" />
+        <h2 className="text-2xl font-extrabold tracking-tight">Add New Record</h2>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 mb-6 text-sm text-orange-700">
+      <div className="mb-6 flex flex-col gap-4 text-sm text-slate-600 md:flex-row">
         <div className="flex items-center gap-2">
-          <UserPlus2 className="w-4 h-4" />
+          <UserPlus2 className="h-4 w-4 text-orange-500" />
           <span>Fill in customer details accurately.</span>
         </div>
         <div className="flex items-center gap-2">
-          <ClipboardEdit className="w-4 h-4" />
+          <ClipboardEdit className="h-4 w-4 text-orange-500" />
           <span>Ensure all required fields are completed.</span>
         </div>
       </div>
 
-      <div className="border-t border-orange-200 pt-4">
+      <div className="border-t border-slate-200 pt-4">
         <AddRecordForm onAdd={handleAddRecord} />
       </div>
     </div>
