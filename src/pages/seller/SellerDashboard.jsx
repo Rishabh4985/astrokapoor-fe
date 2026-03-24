@@ -13,16 +13,19 @@ import {
   CirclePlus,
 } from "lucide-react";
 
+const EMPTY_STATE = {};
+const EMPTY_DATA = [];
+
 const SellerDashboard = () => {
   const { chartData } = useContext(SellerContext);
 
-  const monthlySalesState = chartData["monthly-sales"] || {};
-  const salesVsRefundState = chartData["sales-vs-refund"] || {};
-  const statusCountState = chartData["status-count"] || {};
+  const monthlySalesState = chartData["monthly-sales"] ?? EMPTY_STATE;
+  const salesVsRefundState = chartData["sales-vs-refund"] ?? EMPTY_STATE;
+  const statusCountState = chartData["status-count"] ?? EMPTY_STATE;
 
-  const monthlySales = monthlySalesState.data || [];
-  const salesVsRefund = salesVsRefundState.data || [];
-  const statusCount = statusCountState.data || [];
+  const monthlySales = monthlySalesState.data ?? EMPTY_DATA;
+  const salesVsRefund = salesVsRefundState.data ?? EMPTY_DATA;
+  const statusCount = statusCountState.data ?? EMPTY_DATA;
   const toNumber = (value) => {
     const parsed = Number(value);
     return Number.isFinite(parsed) ? parsed : 0;
@@ -111,7 +114,7 @@ const SellerDashboard = () => {
           />
 
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {kpiCards.map(({ title, value, icon: Icon, accent, note }) => (
+            {kpiCards.map(({ title, value, icon, accent, note }) => (
               <article
                 key={title}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
@@ -130,7 +133,7 @@ const SellerDashboard = () => {
                     <p className="mt-1 text-xs text-slate-500">{note}</p>
                   </div>
                   <span className="rounded-xl bg-slate-100 p-2 text-slate-700">
-                    <Icon className="h-5 w-5" />
+                    {React.createElement(icon, { className: "h-5 w-5" })}
                   </span>
                 </div>
               </article>
