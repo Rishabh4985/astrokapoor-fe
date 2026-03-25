@@ -91,6 +91,8 @@ const SellerProfile = () => {
         }),
       ]);
 
+      console.log("METRICS 👉", metricsRes.data);    // log
+
       const profileData = profileRes.data || {};
       applyProfileToForm(profileData);
       setCurrentSeller?.(profileData);
@@ -157,33 +159,49 @@ const SellerProfile = () => {
     }
   };
 
+  const sellerInitials = useMemo(() => {
+    const name = formData.fullName.trim();
+    if (!name) return "US";
+    const words = name.split(/\s+/);
+    if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+    return (words[0][0] + words[1][0]).toUpperCase();
+  }, [formData.fullName]);
+
   const achievementPct = Number(metrics.achievementPct || 0);
   const achievementWidth = Math.min(100, Math.max(0, achievementPct));
   const dashboardCards = useMemo(
     () => [
       {
         title: "Total Records Handled",
-        value: new Intl.NumberFormat("en-IN").format(
-          Number(metrics.totalRecordsHandled || 0),
-        ),
+        value: new Intl.NumberFormat("en-IN").format(Number(metrics.totalRecordsHandled || 0)),
+        secondary: `↗ ${formatCurrency(metrics.thisMonthSales || 0)}`,
         icon: FileText,
-      },
-      {
-        title: "This Month Sales",
-        value: formatCurrency(metrics.thisMonthSales),
-        icon: IndianRupee,
-      },
-      {
-        title: "This Month Refund",
-        value: formatCurrency(metrics.thisMonthRefund),
-        icon: RefreshCcw,
+        iconClass: "bg-emerald-100 text-emerald-700",
+        dotClass: "bg-emerald-500",
       },
       {
         title: "Pending Followups",
-        value: new Intl.NumberFormat("en-IN").format(
-          Number(metrics.pendingFollowups || 0),
-        ),
+        value: new Intl.NumberFormat("en-IN").format(Number(metrics.pendingFollowups || 0)),
+        secondary: undefined,
         icon: ListChecks,
+        iconClass: "bg-amber-100 text-amber-700",
+        dotClass: "bg-amber-500",
+      },
+      {
+        title: "Total Converted Record",
+        value: new Intl.NumberFormat("en-IN").format(Number(metrics.totalConvertedRecords || 0)),
+        secondary: undefined,
+        icon: FileText,
+        iconClass: "bg-violet-100 text-violet-700",
+        dotClass: "bg-violet-500",
+      },
+      {
+        title: "Total Refunded Record",
+        value: new Intl.NumberFormat("en-IN").format(Number(metrics.totalRefundedRecords || 0)),
+        secondary: `↘ ${formatCurrency(metrics.thisMonthRefund || 0)}`,
+        icon: RefreshCcw,
+        iconClass: "bg-rose-100 text-rose-700",
+        dotClass: "bg-rose-500",
       },
     ],
     [metrics],
@@ -199,127 +217,127 @@ const SellerProfile = () => {
 
   return (
     <div className="mx-auto w-full max-w-[1200px] space-y-5">
-      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-5 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
+      <section className="overflow-hidden rounded-2xl border border-transparent bg-gradient-to-r from-[#b56324] via-[#d28235] to-[#f6b34a] shadow-[0_6px_16px_rgba(0,0,0,0.18)]">
+        <div className="flex flex-wrap items-center justify-between gap-4 px-6 py-5">
+          <div className="flex items-center gap-4">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#f5a86e] text-lg font-bold text-white">
+              {sellerInitials}
+            </div>
             <div>
-              <h2 className="text-2xl font-black tracking-tight text-orange-900">
-                Seller Profile
-              </h2>
-              <p className="text-sm text-orange-700">
+              <div className="flex items-center gap-2">
+                <h2 className="text-2xl font-semibold tracking-tight text-white">
+                  {formData.fullName || "Seller Name"}
+                </h2>
+                <span className="rounded-full border border-white/40 bg-white/20 px-2 py-0.5 text-xs font-medium text-white">
+                  Verified Seller
+                </span>
+              </div>
+              <p className="text-sm text-white/80">
                 Manage personal details and performance targets
               </p>
             </div>
-            <button
-              type="button"
-              onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
-              disabled={saving}
-              className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:from-orange-600 hover:to-amber-600 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {isEditing ? (
-                <>
-                  <Save className="h-4 w-4" />
-                  {saving ? "Saving..." : "Save Changes"}
-                </>
-              ) : (
-                <>
-                  <PencilLine className="h-4 w-4" />
-                  Edit Profile
-                </>
-              )}
-            </button>
           </div>
+          <button
+            type="button"
+            onClick={() => (isEditing ? handleSave() : setIsEditing(true))}
+            disabled={saving}
+            className="rounded-full border border-orange-200 bg-white/80 px-3 py-1.5 text-sm font-semibold text-orange-800 backdrop-blur-sm shadow-sm transition hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isEditing ? (saving ? "Saving..." : "Save Changes") : "Edit Profile"}
+          </button>
         </div>
+      </section>
 
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-orange-50/20 shadow-sm">
         <div className="space-y-5 p-4 sm:p-5">
           <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Full Name
               </span>
               <div className="relative">
-                <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <input
                   name="fullName"
                   value={formData.fullName}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-orange-50/40 disabled:text-slate-500"
                   placeholder="Enter full name"
                 />
               </div>
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Email
               </span>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Mail className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <input
                   value={formData.email}
                   disabled
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-slate-100 pl-10 pr-3 text-sm text-slate-500 outline-none"
+                  className="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 pr-3 text-sm text-slate-500 outline-none"
                 />
               </div>
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Phone
               </span>
               <div className="relative">
-                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Phone className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <input
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-orange-50/40 disabled:text-slate-500"
                   placeholder="Enter phone number"
                 />
               </div>
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Alternate Phone
               </span>
               <div className="relative">
-                <PhoneCall className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <PhoneCall className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <input
                   name="alternatePhone"
                   value={formData.alternatePhone}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-orange-50/40 disabled:text-slate-500"
                   placeholder="Enter alternate phone"
                 />
               </div>
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Date of Birth
               </span>
               <div className="relative">
-                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <DateField
                   name="dob"
                   value={formData.dob}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  inputClassName="pl-10"
+                  inputClassName="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-orange-50/40 disabled:text-slate-500"
                 />
               </div>
             </label>
 
             <label className="space-y-1">
-              <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <span className="text-xs font-semibold uppercase tracking-wide tracking-widest text-orange-900">
                 Monthly Target
               </span>
               <div className="relative">
-                <Target className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <Target className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-900" />
                 <input
                   type="number"
                   min="0"
@@ -327,7 +345,7 @@ const SellerProfile = () => {
                   value={formData.monthlyTarget}
                   onChange={handleChange}
                   disabled={!isEditing}
-                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-300 focus:ring-2 focus:ring-orange-100 disabled:bg-slate-100 disabled:text-slate-500"
+                  className="h-10 w-full rounded-xl border border-orange-100 bg-orange-50/30 pl-10 pr-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-orange-50/40 disabled:text-slate-500"
                   placeholder="Enter monthly target"
                 />
               </div>
@@ -360,23 +378,29 @@ const SellerProfile = () => {
 
         <div className="space-y-5 p-4 sm:p-5">
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {dashboardCards.map(({ title, value, icon }) => (
+            {dashboardCards.map(({ title, value, secondary, icon, iconClass }) => (
               <article
                 key={title}
-                className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+                className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
               >
-                <div className="mb-4 h-1.5 w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400" />
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-                      {title}
-                    </p>
-                    <p className="mt-1 text-2xl font-black text-slate-900">{value}</p>
-                  </div>
-                  <span className="rounded-xl bg-slate-100 p-2 text-slate-700">
-                    {React.createElement(icon, { className: "h-5 w-5" })}
+                <div className="flex items-start justify-start">
+                  <span className={`inline-flex h-8 w-8 items-center justify-center rounded-xl ${iconClass}`}>
+                    {React.createElement(icon, { className: "h-4 w-4" })}
                   </span>
                 </div>
+
+                <p className="mt-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  {title}
+                </p>
+                <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-900">
+                  {value}
+                </p>
+
+                {secondary && (
+                  <p className="mt-2 flex items-center text-sm font-medium text-slate-600">
+                    <span className="mr-2 text-green-600">{secondary}</span>
+                  </p>
+                )}
               </article>
             ))}
           </section>
@@ -422,5 +446,4 @@ const SellerProfile = () => {
     </div>
   );
 };
-
 export default SellerProfile;

@@ -219,7 +219,7 @@ const Filters = ({
   );
 
   return (
-    <div className="relative z-10 space-y-4 rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
+    <div className="relative z-20 space-y-4 rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-4 shadow-sm">
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         {showSearch && (
           <div className="relative flex-1 min-w-[220px]">
@@ -373,7 +373,7 @@ const Filters = ({
                     </div>
 
                     {dropdownOpen && !isGemDisabled && (
-                      <div className="absolute left-0 right-0 top-full z-[25] mt-1 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
+                      <div className="absolute left-0 right-0 top-full z-[] mt-1 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                         <div className="sticky top-0 z-10 bg-white pb-2">
                           <input
                             type="text"
