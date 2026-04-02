@@ -1,0 +1,205 @@
+import { createContext, useContext, useState, useCallback } from "react";
+
+const safeStorage = {
+  getItem: (key) => {
+    try {
+      // Check sessionStorage first for auth tokens
+      if (key === "sessionAuthToken" || key === "sessionUserRole") {
+        const item = sessionStorage.getItem(key);
+        if (!item) return null;
+        return item;
+      }
+      
+      // Fall back to localStorage for persistent data
+      const item = localStorage.getItem(key);
+      if (!item) return null;
+      try {
+        return JSON.parse(item);
+      } catch {
+        return item;
+      }
+    } catch (error) {
+      console.warn(`Failed to get localStorage item ${key}:`, error);
+      return null;
+    }
+  },
+
+  setItem: (key, value) => {
+    try {
+      if (typeof value === "string") {
+        localStorage.setItem(key, value);
+      } else {
+        localStorage.setItem(key, JSON.stringify(value));
+      }
+    } catch (error) {
+      console.warn(`Failed to save to localStorage ${key}:`, error);
+    }
+  },
+
+  removeItem: (key) => {
+    try {
+      localStorage.removeItem(key);
+      // Also remove from sessionStorage if exists
+      if (key === "sessionAuthToken" || key === "sessionUserRole") {
+        sessionStorage.removeItem(key);
+      }
+    } catch (error) {
+      console.warn(`Failed to remove localStorage item ${key}:`, error);
+    }
+  },
+};
+
+const defaultContextValue = {
+  userRole: null,
+  authToken: null,
+  currentSeller: null,
+  setCurrentSeller: () => {},
+  login: () => {},
+  logout: () => {},
+  isAuthenticated: false,
+};
+
+/* eslint-disable react-refresh/only-export-components */
+export const AuthContext = createContext(defaultContextValue);
+AuthContext.displayName = "AuthContext";
+
+export const AuthProvider = ({ children }) => {
+  const [userRole, setUserRole] = useState(() => {
+    const sessionRole = sessionStorage.getItem("sessionUserRole");
+    if (sessionRole) return sessionRole;
+    const role = safeStorage.getItem("userRole");
+    return role && typeof role === "string" ? role : null;
+  });
+
+  const [authToken, setAuthToken] = useState(() => {
+    const sessionToken = sessionStorage.getItem("sessionAuthToken");
+    if (sessionToken) return sessionToken;
+    const token = safeStorage.getItem("authToken");
+    return token && typeof token === "string" ? token : null;
+  });
+
+  const [currentSeller, setCurrentSeller] = useState(() => {
+    const seller = safeStorage.getItem("currentSeller");
+    return seller && typeof seller === "object" ? seller : null;
+  });
+
+  const isAuthenticated = !!(userRole && authToken);
+
+  const login = useCallback((role, token, sellerData = null) => {
+    try {
+      if (!role || !token) {
+        console.error("Login failed: Missing role or token");
+        return false;
+      }
+
+      setUserRole(role);
+      setAuthToken(token);
+
+      // Store in sessionStorage for tab isolation
+      sessionStorage.setItem("sessionAuthToken", token);
+      sessionStorage.setItem("sessionUserRole", role);
+      
+      // Store in localStorage for persistence
+      safeStorage.setItem("userRole", role);
+      safeStorage.setItem("authToken", token);
+
+      if (role === "seller" && sellerData) {
+        const normalizedSeller = {
+          ...sellerData,
+          email: sellerData.email?.toLowerCase?.().trim() || "",
+        };
+        setCurrentSeller(normalizedSeller);
+        safeStorage.setItem("currentSeller", normalizedSeller);
+        safeStorage.setItem("isSellerLoggedIn", "true");
+      }
+
+      if (role === "admin") {
+        safeStorage.setItem("isAdminLoggedIn", "true");
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Login failed:", error);
+      return false;
+    }
+  }, []);
+
+  const logout = useCallback(() => {
+    try {
+      setUserRole(null);
+      setAuthToken(null);
+      setCurrentSeller(null);
+
+      // Clear sessionStorage for current tab session
+      sessionStorage.removeItem("sessionAuthToken");
+      sessionStorage.removeItem("sessionUserRole");
+
+      // Clear localStorage
+      const keysToRemove = [
+        "userRole",
+        "authToken",
+        "currentSeller",
+        "isAdminLoggedIn",
+        "isSellerLoggedIn",
+        "userList",
+      ];
+      keysToRemove.forEach((key) => safeStorage.removeItem(key));
+    } catch (error) {
+      console.error("Logout failed:", error);
+    }
+  }, []);
+
+  const setCurrentSellerSafe = useCallback((seller) => {
+    try {
+      if (seller && typeof seller === "object") {
+        setCurrentSeller(seller);
+        safeStorage.setItem("currentSeller", seller);
+      }
+    } catch (error) {
+      console.error("Failed to set current seller:", error);
+    }
+  }, []);
+
+  const isAdmin = userRole === "admin";
+  const isSeller = userRole === "seller";
+
+  return (
+    <AuthContext.Provider
+      value={{
+        userRole,
+        authToken,
+        currentSeller,
+        setCurrentSeller: setCurrentSellerSafe,
+        login,
+        logout,
+        isAuthenticated,
+        isSeller,
+        isAdmin,
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+/* eslint-disable react-refresh/only-export-components */
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+
+  return context;
+};
+
+/* eslint-disable react-refresh/only-export-components */
+export const useAuthRole = (requiredRole) => {
+  const { userRole, isAuthenticated } = useAuth();
+
+  return {
+    hasRole: isAuthenticated && userRole === requiredRole,
+    userRole,
+    isAuthenticated,
+  };
+};
