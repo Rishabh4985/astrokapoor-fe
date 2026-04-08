@@ -104,7 +104,12 @@ export const formatValue = (key, value) => {
         const serviceValues = value
           .map((item) => (item === null || item === undefined ? "" : String(item).trim()))
           .filter(Boolean);
-        return serviceValues.length > 0 ? serviceValues.join(", ") : "-";
+        const formattedServiceValues = serviceValues.map((item) =>
+          capitalizeValue(item),
+        );
+        return formattedServiceValues.length > 0
+          ? formattedServiceValues.join(", ")
+          : "-";
       }
       // Handle other arrays with readable casing in UI
       const formattedValues = value

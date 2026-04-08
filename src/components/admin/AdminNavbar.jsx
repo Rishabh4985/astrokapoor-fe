@@ -20,6 +20,7 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
   const { filters = {}, setFilters, goToPage } = useContext(AdminContext);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [searchInput, setSearchInput] = useState(filters.query || "");
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const dropdownRef = useRef(null);
   const debouncedSearchRef = useRef(
     debounce((searchQuery) => {
@@ -72,9 +73,9 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
   };
 
   return (
-    <nav className="sticky top-0 z-30 border-b border-white/10 bg-gradient-to-r from-stone-950 via-orange-950 to-amber-800 px-3 py-3 shadow-lg sm:px-5">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
+    <nav className="sticky top-0 z-[120] overflow-visible border-b border-white/10 bg-gradient-to-r from-stone-950 via-orange-950 to-amber-800 px-3 py-3 shadow-lg sm:px-5">
+      <div className="flex min-w-0 items-center justify-between gap-2 sm:gap-3">
+        <div className="flex min-w-0 items-center gap-2 sm:gap-3">
           {isMobile && (
             <button
               onClick={onToggleSidebar}
@@ -85,7 +86,7 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
             </button>
           )}
 
-          <div className="text-3xl font-black tracking-tight text-white">
+          <div className="min-w-0 truncate text-xl font-black leading-none tracking-tight text-white sm:text-3xl">
             Astro<span className="text-amber-300">Kapoor</span>
           </div>
         </div>
@@ -103,7 +104,16 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
           </div>
         </div>
 
-        <div className="flex items-center gap-2" ref={dropdownRef}>
+        <div className="relative flex shrink-0 items-center gap-1.5 sm:gap-2" ref={dropdownRef}>
+          <button
+            type="button"
+            onClick={() => setMobileSearchOpen((prev) => !prev)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-orange-50 transition hover:bg-white/15 md:hidden"
+            aria-label="Toggle search"
+          >
+            <Search className="h-4 w-4" />
+          </button>
+
           <button
             type="button"
             className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/25 bg-white/10 text-orange-50 transition hover:bg-white/15"
@@ -118,19 +128,19 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
             onClick={() => setDropdownOpen((prev) => !prev)}
             aria-expanded={dropdownOpen}
             aria-haspopup="true"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-white/15"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-white/20 bg-white/10 text-sm font-semibold text-white shadow-sm transition hover:bg-white/15 sm:h-auto sm:w-auto sm:gap-2 sm:px-3 sm:py-2"
           >
             <User className="h-4 w-4" />
             <span className="hidden sm:inline">Admin</span>
             <ChevronDown
-              className={`h-4 w-4 transition-transform ${
+              className={`hidden h-4 w-4 transition-transform sm:block ${
                 dropdownOpen ? "rotate-180" : ""
               }`}
             />
           </button>
 
           {dropdownOpen && (
-            <div className="absolute right-0 top-12 z-50 min-w-[13rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+            <div className="absolute right-0 top-full z-[130] mt-2 min-w-[13rem] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
               <button
                 onClick={() => {
                   navigate("/admin/manage-salesperson");
@@ -153,6 +163,21 @@ const AdminNavbar = ({ onToggleSidebar, isMobile, isSidebarOpen = false }) => {
           )}
         </div>
       </div>
+
+      {mobileSearchOpen && (
+        <div className="mt-3 md:hidden">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-orange-100/80" />
+            <input
+              value={searchInput}
+              onChange={handleSearchChange}
+              onBlur={() => debouncedSearchRef.current.flush?.()}
+              placeholder="Search records..."
+              className="w-full rounded-xl border border-white/25 bg-white/10 py-2 pl-10 pr-3 text-sm text-orange-50 placeholder-orange-100/80 outline-none transition focus:border-amber-300/60 focus:bg-white/15"
+            />
+          </div>
+        </div>
+      )}
     </nav>
   );
 };

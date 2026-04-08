@@ -15,12 +15,7 @@ import {
   detectPhoneIso,
   buildFullPhone,
 } from "../../utils/formUtils";
-import {
-  gemFieldOrder,
-  getGemOptionsForField,
-  clearChildGemFields,
-  hasGemSelection,
-} from "../../utils/gemsHierarchyUtils";
+import { gemFieldOrder } from "../../utils/gemsHierarchyUtils";
 
 const LabelWithAsterisk = ({ text }) => (
   <label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -131,30 +126,20 @@ const AddRecordForm = ({ onAdd }) => {
         const updatedValues = currentValues.includes(value)
           ? currentValues.filter((v) => v !== value)
           : [...currentValues, value];
-        const next = { ...prev, [name]: updatedValues };
-        if (gemFieldOrder.includes(name)) {
-          return clearChildGemFields(name, next);
-        }
-        return next;
+        return { ...prev, [name]: updatedValues };
       });
       return;
     }
 
-    // Validate customer name to only accept alphabets, spaces, and dots
+    // Validate customer name to only accept alphabets, spaces, dots, /, (), and '
     if (name === "customerName") {
-      const nameRegex = /^[a-zA-Z.\s]*$/;
+      const nameRegex = /^[a-zA-Z./()'\s]*$/;
       if (!nameRegex.test(value)) {
         return;
       }
     }
 
-    setFormData((prev) => {
-      const next = { ...prev, [name]: value };
-      if (gemFieldOrder.includes(name)) {
-        return clearChildGemFields(name, next);
-      }
-      return next;
-    });
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   // Helper function to remove a selected item from any field
@@ -166,11 +151,6 @@ const AddRecordForm = ({ onAdd }) => {
           ? prev[field].filter((item) => item !== itemToRemove)
           : [],
       };
-
-      if (gemFieldOrder.includes(field)) {
-        return clearChildGemFields(field, next);
-      }
-
       return next;
     });
   };
@@ -616,32 +596,9 @@ const AddRecordForm = ({ onAdd }) => {
                 );
               }
 
-              const isGemField = gemFieldOrder.includes(key);
-              const keyIndex = gemFieldOrder.indexOf(key);
-              const parentField = keyIndex > 0 ? gemFieldOrder[keyIndex - 1] : "";
-              const shouldShowGemField =
-                !isGemField ||
-                key === "gems" ||
-                hasGemSelection(formData[parentField]);
-
-              if (!shouldShowGemField) return null;
-
-              const gemOptions = isGemField
-                ? getGemOptionsForField(
-                    key,
-                    formData,
-                    dropdowns.gemsHierarchy || {},
-                    dropdowns.gems || [],
-                  )
-                : [];
-              const isGemDisabled =
-                isGemField &&
-                key !== "gems" &&
-                (!hasGemSelection(formData[parentField]) ||
-                  gemOptions.length === 0);
               const dropdownOpen = Boolean(openMultiDropdowns[key]);
-              const multiOptions = Array.isArray(isGemField ? gemOptions : dropdowns[key])
-                ? (isGemField ? gemOptions : dropdowns[key])
+              const multiOptions = Array.isArray(dropdowns[key])
+                ? dropdowns[key]
                 : [];
               const getOptionValue = (option) => {
                 if (typeof option === "string") return option;
@@ -745,7 +702,6 @@ const AddRecordForm = ({ onAdd }) => {
                         {/* Dropdown Toggle */}
                         <div
                           onClick={() => {
-                            if (isGemDisabled) return;
                             const nextOpen = !openMultiDropdowns[key];
                             if (nextOpen) {
                               setDropdownDirection((prev) => ({
@@ -764,11 +720,9 @@ const AddRecordForm = ({ onAdd }) => {
                           className="flex cursor-pointer items-center justify-between p-3 transition hover:bg-slate-50"
                         >
                           <span className="text-sm text-slate-600">
-                            {isGemDisabled
-                              ? "Select parent first"
-                              : Array.isArray(formData[key]) && formData[key].length > 0
-                                ? `${formData[key].length} selected`
-                                : `Click to select ${label.toLowerCase()}`}
+                            {Array.isArray(formData[key]) && formData[key].length > 0
+                              ? `${formData[key].length} selected`
+                              : `Click to select ${label.toLowerCase()}`}
                           </span>
                           <span className={`text-lg transition-transform ${
                             dropdownOpen
@@ -779,7 +733,7 @@ const AddRecordForm = ({ onAdd }) => {
                           </span>
                         </div>
                         {/* Scrollable Checkbox List */}
-                        {dropdownOpen && !isGemDisabled && (
+                        {dropdownOpen && (
                           <div
                             className={`absolute left-0 right-0 z-[90] max-h-52 space-y-2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-3 shadow-xl ${
                               dropdownDirection[key] === "up"
@@ -841,18 +795,13 @@ const AddRecordForm = ({ onAdd }) => {
                         name={key}
                         value={formData[key] || ""}
                         onChange={handleChange}
-                        disabled={isGemDisabled}
                         className={inputClass}
                       >
                         <option value="">
-                          {isGemDisabled
-                            ? "Select parent first"
-                            : loading
-                              ? "Loading..."
-                              : `Select ${label}`}
+                          {loading ? "Loading..." : `Select ${label}`}
                         </option>
 
-                        {(isGemField ? gemOptions : dropdowns[key]).map((option) => (
+                        {(dropdowns[key] || []).map((option) => (
                           <option key={option} value={option}>
                             {option}
                           </option>

@@ -2,7 +2,7 @@ import React, { useContext, useState, useMemo } from "react";
 import { SellerContext } from "../../context/SellerContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
-import { Table2 } from "lucide-react";
+import { Table2, Eye, EyeOff } from "lucide-react";
 import {
   expectedHeaders,
   headerLabels,
@@ -15,7 +15,6 @@ import OptionsContext from "../../context/OptionsContext.jsx";
 import SellerPagination from "../../components/seller/SellerPagination.jsx";
 import SellerTable from "../../components/seller/SellerTable.jsx";
 import { formatValue, formatDate } from "../../utils/formatter.js";
-import { gemFieldOrder, hasGemSelection } from "../../utils/gemsHierarchyUtils.js";
 
 const SellerRecordList = () => {
   const {
@@ -41,6 +40,7 @@ const SellerRecordList = () => {
   const [expandedHistoryId, setExpandedHistoryId] = useState(null);
   const [recordHistory, setRecordHistory] = useState({});
   const [loadingHistory, setLoadingHistory] = useState({});
+  const [showActionsColumn, setShowActionsColumn] = useState(true);
   const itemsPerPage = 100;
 
   const currentSeller = JSON.parse(localStorage.getItem("currentSeller"));
@@ -140,29 +140,7 @@ const SellerRecordList = () => {
   };
 
   const handleChange = (key, value) => {
-    if (gemFieldOrder.includes(key)) {
-      const keyIndex = gemFieldOrder.indexOf(key);
-      const candidate = { ...editedRecord, [key]: value };
-      const hasAllParents = gemFieldOrder
-        .slice(0, keyIndex)
-        .every((fieldName) => hasGemSelection(candidate[fieldName]));
-
-      if (keyIndex > 0 && value && !hasAllParents) {
-        toast.info("Select parent gem fields first");
-        return;
-      }
-    }
-
-    setEditedRecord((prev) => {
-      const next = { ...prev, [key]: value };
-      if (!gemFieldOrder.includes(key)) return next;
-
-      const changedIndex = gemFieldOrder.indexOf(key);
-      for (let i = changedIndex + 1; i < gemFieldOrder.length; i += 1) {
-        next[gemFieldOrder[i]] = "";
-      }
-      return next;
-    });
+    setEditedRecord((prev) => ({ ...prev, [key]: value }));
 
     if (requiredFields.includes(key)) {
       setValidationErrors((prev) => {
@@ -239,6 +217,12 @@ const SellerRecordList = () => {
     setEditedRecord({});
   };
 
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditedRecord({});
+    setValidationErrors({});
+  };
+
   const fetchRecordHistory = async (recordId) => {
     if (recordHistory[recordId]) {
       return;
@@ -279,7 +263,7 @@ const SellerRecordList = () => {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-5">
-      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="isolate rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -307,6 +291,26 @@ const SellerRecordList = () => {
             showAdvancedToggle={true}
           />
 
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setShowActionsColumn((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+            >
+              {showActionsColumn ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" />
+                  Hide Actions
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  Show Actions
+                </>
+              )}
+            </button>
+          </div>
+
           <div className="relative">
             <SellerTable
               headers={headers}
@@ -328,9 +332,11 @@ const SellerRecordList = () => {
               handleEdit={handleEdit}
               handleChange={handleChange}
               handleSave={handleSave}
+              handleCancelEdit={handleCancelEdit}
               isSaveDisabled={isSaveDisabled}
               formatValue={formatValue}
               formatDate={formatDate}
+              showActions={showActionsColumn}
             />
             <SellerPagination
               currentPage={page}

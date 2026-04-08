@@ -1,11 +1,7 @@
 import React from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import SellerHistoryRecords from "./SellerHistoryRecords";
-import {
-  gemFieldOrder,
-  getGemOptionsForField,
-  hasGemSelection,
-} from "../../utils/gemsHierarchyUtils";
+import { gemFieldOrder } from "../../utils/gemsHierarchyUtils";
 
 const SellerTable = ({
   headers,
@@ -27,9 +23,11 @@ const SellerTable = ({
   handleEdit,
   handleChange,
   handleSave,
+  handleCancelEdit,
   isSaveDisabled,
   formatValue,
   formatDate,
+  showActions = true,
 }) => {
   const normalizeText = (value) => {
     if (Array.isArray(value)) {
@@ -104,11 +102,17 @@ const SellerTable = ({
   };
 
   return (
-    <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="records-scrollbar w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full divide-y divide-slate-200 text-sm">
         {/* ================= HEADER ================= */}
         <thead className="sticky top-0 z-10 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
           <tr>
+            {showActions && (
+              <th className="border border-slate-200 px-4 py-3 text-xs font-semibold text-orange-900">
+                Actions
+              </th>
+            )}
+
             <th className="border border-slate-200 px-3 py-3 text-xs font-semibold text-orange-900">
               History
             </th>
@@ -125,9 +129,6 @@ const SellerTable = ({
               </th>
             ))}
 
-            <th className="border border-slate-200 px-4 py-3 text-xs font-semibold text-orange-900">
-              Actions
-            </th>
           </tr>
         </thead>
 
@@ -155,6 +156,42 @@ const SellerTable = ({
               return (
                 <React.Fragment key={record._id}>
                   <tr className="cursor-pointer border-b border-slate-100 text-center transition-colors hover:bg-orange-50/70">
+                    {showActions && (
+                      <td className="border border-slate-100 px-3 py-2">
+                        {isEditing ? (
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => handleSave(record._id)}
+                              disabled={isSaveDisabled()}
+                              className={`rounded px-3 py-1 text-sm font-medium ${
+                                isSaveDisabled()
+                                  ? "text-gray-400 cursor-not-allowed"
+                                  : "text-emerald-600 hover:bg-emerald-50"
+                              }`}
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={handleCancelEdit}
+                              className="rounded px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => !isBlocked && handleEdit(record)}
+                            disabled={isBlocked}
+                            className={`text-xs text-orange-600 hover:underline ${
+                              isBlocked ? "opacity-50 cursor-not-allowed" : ""
+                            }`}
+                          >
+                            Edit
+                          </button>
+                        )}
+                      </td>
+                    )}
+
                     {/* HISTORY */}
                     <td className="border border-slate-100 px-3 py-2">
                       <button
@@ -196,56 +233,7 @@ const SellerTable = ({
                           }`}
                         >
                           {isEditing && !nonEditableFields.includes(key) ? (
-                            gemFieldOrder.includes(key) ? (
-                              (() => {
-                                const keyIndex = gemFieldOrder.indexOf(key);
-                                const parentField =
-                                  keyIndex > 0
-                                    ? gemFieldOrder[keyIndex - 1]
-                                    : null;
-                                const hasAllParentSelections = gemFieldOrder
-                                  .slice(0, keyIndex)
-                                  .every((fieldName) =>
-                                    hasGemSelection(editedRecord[fieldName]),
-                                  );
-                                const gemOptions = getGemOptionsForField(
-                                  key,
-                                  editedRecord,
-                                  dropdowns.gemsHierarchy || {},
-                                  dropdowns.gems || [],
-                                );
-                                const isDisabled =
-                                  key !== "gems" &&
-                                  (!hasAllParentSelections ||
-                                    !hasGemSelection(editedRecord[parentField]) ||
-                                    gemOptions.length === 0);
-
-                                return (
-                                  <select
-                                    value={getSelectValue(rawValue, gemOptions)}
-                                    onChange={(e) =>
-                                      handleChange(key, e.target.value)
-                                    }
-                                    disabled={isDisabled}
-                                    className="w-full rounded-lg border border-orange-200 p-1 text-xs focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:bg-slate-100"
-                                  >
-                                    <option value="">
-                                      {isDisabled
-                                        ? "Select parent first"
-                                        : `Select ${headerLabels[key] || key}`}
-                                    </option>
-                                    {gemOptions.map((option, idx) => (
-                                      <option
-                                        key={`${key}-${option}-${idx}`}
-                                        value={option}
-                                      >
-                                        {option}
-                                      </option>
-                                    ))}
-                                  </select>
-                                );
-                              })()
-                            ) : key === "country" ? (
+                            key === "country" ? (
                               <select
                                 value={getSelectValue(
                                   rawValue,
@@ -285,7 +273,7 @@ const SellerTable = ({
                                     <option value="">
                                       {!countryObj
                                         ? "Select country first"
-                                        : "Select State"}
+                                      : "Select State"}
                                     </option>
                                     {states.map((s, idx) => (
                                       <option key={idx} value={s}>
@@ -295,7 +283,7 @@ const SellerTable = ({
                                   </select>
                                 );
                               })()
-                            ) : Array.isArray(dropdowns?.[key]) ? (
+                            ) : gemFieldOrder.includes(key) || Array.isArray(dropdowns?.[key]) ? (
                               <select
                                 value={getSelectValue(rawValue, dropdowns[key] || [])}
                                 onChange={(e) =>
@@ -352,31 +340,6 @@ const SellerTable = ({
                     })}
 
                     {/* ACTION */}
-                    <td className="border border-slate-100 px-3 py-2">
-                      {isEditing ? (
-                        <button
-                          onClick={() => handleSave(record._id)}
-                          disabled={isSaveDisabled()}
-                          className={`rounded px-3 py-1 text-sm font-medium ${
-                            isSaveDisabled()
-                              ? "text-gray-400 cursor-not-allowed"
-                              : "text-emerald-600 hover:bg-emerald-50"
-                          }`}
-                        >
-                          Save
-                        </button>
-                      ) : (
-                        <button
-                          onClick={() => !isBlocked && handleEdit(record)}
-                          disabled={isBlocked}
-                          className={`text-xs text-orange-600 hover:underline ${
-                            isBlocked ? "opacity-50 cursor-not-allowed" : ""
-                          }`}
-                        >
-                          Edit
-                        </button>
-                      )}
-                    </td>
                   </tr>
 
                   {/* HISTORY */}
@@ -395,7 +358,7 @@ const SellerTable = ({
           ) : (
             <tr>
               <td
-                colSpan={headers.length + 2}
+                colSpan={headers.length + 1 + (showActions ? 1 : 0)}
                 className="py-10 text-center text-slate-500"
               >
                 No records found from {visibleRecords.length} total records.

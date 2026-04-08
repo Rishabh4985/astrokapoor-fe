@@ -68,7 +68,7 @@ const SellerSalesLookup = () => {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-5">
-      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="isolate rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -96,7 +96,7 @@ const SellerSalesLookup = () => {
             showAdvancedToggle={true}
           />
 
-          <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+          <div className="records-scrollbar w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
             <table className="min-w-full divide-y divide-slate-200 text-sm">
               <thead className="sticky top-0 z-10 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
                 <tr>

@@ -15,6 +15,7 @@ const AdminTable = ({
   formatValue,
   handleEditChange,
   renderActions,
+  showActions = true,
 }) => {
   const getOptionValue = (option) => {
     if (option && typeof option === "object") {
@@ -73,14 +74,15 @@ const AdminTable = ({
   };
 
   return (
-    <div className="overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
+    <div className="records-scrollbar w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
       <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
         <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
           <tr>
-            {/* Sticky Actions Header */}
-            <th className="sticky left-0 top-0 z-30 w-28 whitespace-nowrap border-r border-slate-200 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 px-4 py-3 text-center font-semibold">
-              Actions
-            </th>
+            {showActions && (
+              <th className="sticky left-0 top-0 z-30 w-28 whitespace-nowrap border-r border-slate-200 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 px-4 py-3 text-center font-semibold">
+                Actions
+              </th>
+            )}
 
             {headers.map((key) => (
               <th
@@ -111,10 +113,11 @@ const AdminTable = ({
                       : "bg-orange-50/40"
                   } transition-colors hover:bg-orange-50 ${isEditing ? "bg-amber-50" : ""}`}
                 >
-                  {/* Actions Column */}
-                  <td className="sticky left-0 z-10 whitespace-nowrap border-r border-slate-200 bg-white px-4 py-2 text-center">
-                    {renderActions ? renderActions(record, isEditing) : null}
-                  </td>
+                  {showActions && (
+                    <td className="sticky left-0 z-10 whitespace-nowrap border-r border-slate-200 bg-white px-4 py-2 text-center">
+                      {renderActions ? renderActions(record, isEditing) : null}
+                    </td>
+                  )}
 
                   {/* Data Columns */}
                   {headers.map((key) => {
@@ -133,11 +136,8 @@ const AdminTable = ({
                     const dropdownOptions = getDropdownOptionsForField(key);
                     const shouldRenderDropdown =
                       dropdownOptions.length > 0 || isDropdownField?.(key);
-                    const isDependentGemField =
-                      ["gems1", "gems2", "gems3", "gems4"].includes(key);
                     const isDisabledDropdown =
-                      (key === "state" && dropdownOptions.length === 0) ||
-                      (isDependentGemField && dropdownOptions.length === 0);
+                      key === "state" && dropdownOptions.length === 0;
 
                     return (
                       <td
@@ -163,9 +163,7 @@ const AdminTable = ({
                                 } disabled:bg-slate-100`}
                               >
                                 <option value="">
-                                  {isDisabledDropdown
-                                    ? "Select parent first"
-                                    : `Select ${getFieldLabel(key)}`}
+                                  {`Select ${getFieldLabel(key)}`}
                                 </option>
                                 {dropdownOptions.map((opt, idxOpt) => (
                                   <option
@@ -222,7 +220,7 @@ const AdminTable = ({
           ) : (
             <tr>
               <td
-                colSpan={headers.length + 1}
+                colSpan={headers.length + (showActions ? 1 : 0)}
                 className="py-10 text-center text-slate-500"
               >
                 No records found.

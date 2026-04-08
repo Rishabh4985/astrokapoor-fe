@@ -113,8 +113,4 @@ export const categoryOptionsConfig = [
   { key: "expert", label: "Expert" },
   { key: "country", label: "Country" },
   { key: "gems", label: "Gems" },
-  { key: "gems1", label: "Gems 1" },
-  { key: "gems2", label: "Gems 2" },
-  { key: "gems3", label: "Gems 3" },
-  { key: "gems4", label: "Gems 4" },
 ];

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useMemo } from "react";
 import { AdminContext } from "../../context/AdminContext";
 import Excel from "../../components/shared/Excel";
 import { toast } from "react-toastify";
-import { Table2, Edit2, Trash2, X, Check, Lock } from "lucide-react";
+import { Table2, Edit2, Trash2, X, Check, Lock, Eye, EyeOff } from "lucide-react";
 import {
   headerLabels,
   expectedHeaders,
@@ -17,8 +17,6 @@ import OptionsContext from "../../context/OptionsContext";
 import { formatValue } from "../../utils/formatter.js";
 import {
   gemFieldOrder,
-  getGemOptionsForField,
-  hasGemSelection,
 } from "../../utils/gemsHierarchyUtils.js";
 
 const AdminSalesRecordList = () => {
@@ -47,30 +45,11 @@ const AdminSalesRecordList = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(null);
   const [fieldErrors, setFieldErrors] = useState({});
-
-  const hasGemParentSelections = (fieldName, selections) => {
-    const fieldIndex = gemFieldOrder.indexOf(fieldName);
-    if (fieldIndex <= 0) return true;
-
-    return gemFieldOrder
-      .slice(0, fieldIndex)
-      .every((parentField) => hasGemSelection(selections?.[parentField]));
-  };
+  const [showActionsColumn, setShowActionsColumn] = useState(true);
 
   const getDropdownOptionsForField = (fieldName) => {
     if (gemFieldOrder.includes(fieldName)) {
-      const originalRecord =
-        flattenedRecords.find((r) => r._id === editingId) || {};
-      const selections = { ...originalRecord, ...draft };
-
-      if (!hasGemParentSelections(fieldName, selections)) return [];
-
-      return getGemOptionsForField(
-        fieldName,
-        selections,
-        dropdowns.gemsHierarchy || {},
-        dropdowns.gems || [],
-      ).map((item) => ({
+      return (dropdowns[fieldName] || []).map((item) => ({
         label: item,
         value: item,
       }));
@@ -141,14 +120,14 @@ const AdminSalesRecordList = () => {
       }
     }
 
-    // Validate customerName contains only alphabets, spaces, and dots
+    // Validate customerName contains only alphabets, spaces, dots, /, (), and '
     if (fieldName === "customerName" && value) {
-      const nameRegex = /^[a-zA-Z.\s]{2,}$/;
+      const nameRegex = /^[a-zA-Z./()'\s]{2,}$/;
       if (!nameRegex.test(value)) {
         return {
           isValid: false,
           errorMessage:
-            "Customer name can only contain alphabets, spaces, and dots",
+            "Customer name can only contain alphabets, spaces, dots, /, (, ), and '",
         };
       }
     }
@@ -224,27 +203,7 @@ const AdminSalesRecordList = () => {
   };
 
   const handleEditChange = (field, value) => {
-    if (gemFieldOrder.includes(field)) {
-      const candidate = { ...draft, [field]: value };
-      const fieldIndex = gemFieldOrder.indexOf(field);
-      const canSelect = hasGemParentSelections(field, candidate);
-
-      if (fieldIndex > 0 && value && !canSelect) {
-        toast.info("Select parent gem fields first");
-        return;
-      }
-    }
-
-    setDraft((prev) => {
-      const next = { ...prev, [field]: value };
-      if (!gemFieldOrder.includes(field)) return next;
-
-      const changedIndex = gemFieldOrder.indexOf(field);
-      for (let i = changedIndex + 1; i < gemFieldOrder.length; i += 1) {
-        next[gemFieldOrder[i]] = "";
-      }
-      return next;
-    });
+    setDraft((prev) => ({ ...prev, [field]: value }));
 
     // Validate field in real-time
     const validation = validateFieldValue(field, value);
@@ -314,10 +273,9 @@ const AdminSalesRecordList = () => {
     }
   };
 
-  const handleImport = async (importedData) => {
+  const handleImport = async () => {
     try {
-      await importRecords(importedData);
-      toast.success("Records imported and saved to database!");
+      await importRecords();
     } catch (err) {
       toast.error("Import failed", err);
     }
@@ -355,7 +313,7 @@ const AdminSalesRecordList = () => {
 
   return (
     <div className="mx-auto w-full max-w-[1400px] space-y-5">
-      <div className="isolate overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div className="isolate rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div className="border-b border-slate-100 bg-gradient-to-r from-white via-orange-50/40 to-amber-50/40 px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-1">
@@ -381,6 +339,26 @@ const AdminSalesRecordList = () => {
             showAdvancedToggle={true}
           />
 
+          <div className="md:hidden">
+            <button
+              type="button"
+              onClick={() => setShowActionsColumn((prev) => !prev)}
+              className="inline-flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs font-semibold text-orange-700 transition hover:bg-orange-100"
+            >
+              {showActionsColumn ? (
+                <>
+                  <EyeOff className="h-3.5 w-3.5" />
+                  Hide Actions
+                </>
+              ) : (
+                <>
+                  <Eye className="h-3.5 w-3.5" />
+                  Show Actions
+                </>
+              )}
+            </button>
+          </div>
+
           <AdminTable
             headers={headers}
             records={records}
@@ -404,6 +382,7 @@ const AdminSalesRecordList = () => {
             cancelEdit={cancelEdit}
             saveEdit={saveEdit}
             handleEditChange={handleEditChange}
+            showActions={showActionsColumn}
             renderActions={(record, isEditing) => {
               if (isEditing) {
                 return (

@@ -5,7 +5,7 @@ import {
 import disposableDomains from "disposable-email-domains";
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-const NAME_REGEX = /^[a-zA-Z.\s]{2,}$/;
+const NAME_REGEX = /^[a-zA-Z./()'\s]{2,}$/;
 
 export const stripCountryCode = (phone) => {
   if (!phone) return "";

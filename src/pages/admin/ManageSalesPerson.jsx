@@ -248,7 +248,7 @@ const ManageSalesPerson = () => {
       )}
 
       {activeTab === "list" && (
-        <div className="overflow-x-auto mt-4">
+        <div className="mt-4 max-h-[65vh] overflow-auto">
           {loading ? (
             <div className="flex justify-center items-center py-10 text-orange-600">
               <Loader2 className="animate-spin w-6 h-6 mr-2" />
@@ -260,7 +260,7 @@ const ManageSalesPerson = () => {
             </p>
           ) : (
             <table className="w-full border text-sm rounded-lg overflow-hidden shadow-sm">
-              <thead className="bg-orange-100 text-orange-900">
+              <thead className="sticky top-0 z-10 bg-orange-100 text-orange-900">
                 <tr>
                   <th className="border p-2">Name</th>
                   <th className="border p-2">Email</th>

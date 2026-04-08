@@ -3,12 +3,6 @@ import { Search, X, Sliders, Check, ChevronDown } from "lucide-react";
 import OptionsContext from "../../context/OptionsContext";
 import { debounce } from "../../utils/debounce";
 import DateField from "./DateField";
-import {
-  gemFieldOrder,
-  getGemOptionsForField,
-  clearChildGemFields,
-  hasGemSelection,
-} from "../../utils/gemsHierarchyUtils";
 
 const Filters = ({
   context,
@@ -29,7 +23,7 @@ const Filters = ({
   const { filters, setFilters, goToPage } = useContext(context);
 
   const multiSelectFields = useMemo(
-    () => ["service", "handleBy", ...gemFieldOrder],
+    () => ["service", "handleBy", "gems"],
     [],
   );
 
@@ -58,6 +52,15 @@ const Filters = ({
     }, {}),
   });
 
+  const getOptionValue = (option) => {
+    if (typeof option === "string") return option;
+    if (typeof option === "number") return String(option);
+    if (option && typeof option === "object") {
+      return option.name || option.label || option.value || "";
+    }
+    return "";
+  };
+
   const updateFilter = (key, value) => {
     setLocalFilters((prev) => {
       const next = { ...prev };
@@ -76,10 +79,6 @@ const Filters = ({
         next[key] = value;
       }
 
-      if (gemFieldOrder.includes(key)) {
-        return clearChildGemFields(key, next);
-      }
-
       return next;
     });
   };
@@ -92,10 +91,6 @@ const Filters = ({
           ? prev[field].filter((item) => item !== itemToRemove)
           : [],
       };
-
-      if (gemFieldOrder.includes(field)) {
-        return clearChildGemFields(field, next);
-      }
 
       return next;
     });
@@ -267,40 +262,9 @@ const Filters = ({
           {categoryOptionsConfig.map(({ key, label }) => {
             if (key === "state") return null;
 
-            const keyIndex = gemFieldOrder.indexOf(key);
-            const parentField = keyIndex > 0 ? gemFieldOrder[keyIndex - 1] : "";
-            const isGemField = keyIndex !== -1;
-            const shouldShowGemField =
-              !isGemField ||
-              key === "gems" ||
-              hasGemSelection(localFilters[parentField]);
-
-            if (!shouldShowGemField) return null;
-
-            const options = isGemField
-              ? getGemOptionsForField(
-                  key,
-                  localFilters,
-                  dropdowns?.gemsHierarchy || {},
-                  dropdowns?.gems || [],
-                )
-              : fieldOptionsMap[key] || [];
-
-            const isGemDisabled =
-              isGemField &&
-              key !== "gems" &&
-              (!hasGemSelection(localFilters[parentField]) ||
-                options.length === 0);
+            const options = fieldOptionsMap[key] || [];
 
             if (multiSelectFields.includes(key)) {
-              const getOptionValue = (option) => {
-                if (typeof option === "string") return option;
-                if (typeof option === "number") return String(option);
-                if (option && typeof option === "object") {
-                  return option.name || option.label || option.value || "";
-                }
-                return "";
-              };
               const selectedItems = Array.isArray(localFilters[key])
                 ? localFilters[key]
                 : localFilters[key]
@@ -347,7 +311,6 @@ const Filters = ({
 
                     <div
                       onClick={() => {
-                        if (isGemDisabled) return;
                         setOpenMultiDropdowns((prev) => ({
                           [key]: !prev[key],
                         }));
@@ -359,11 +322,9 @@ const Filters = ({
                       className="flex cursor-pointer items-center justify-between p-2 transition hover:bg-slate-50"
                     >
                       <span className="text-xs text-slate-600">
-                        {isGemDisabled
-                          ? "Select parent first"
-                          : selectedItems.length > 0
-                            ? `${selectedItems.length} selected`
-                            : `Select ${label.toLowerCase()}`}
+                        {selectedItems.length > 0
+                          ? `${selectedItems.length} selected`
+                          : `Select ${label.toLowerCase()}`}
                       </span>
                       <span
                         className={`text-xs transition-transform ${
@@ -374,7 +335,7 @@ const Filters = ({
                       </span>
                     </div>
 
-                    {dropdownOpen && !isGemDisabled && (
+                    {dropdownOpen && (
                       <div className="absolute left-0 right-0 top-full z-[90] mt-1 max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-white p-2 shadow-xl">
                         <div className="sticky top-0 z-10 bg-white pb-2">
                           <input
@@ -433,12 +394,9 @@ const Filters = ({
                 <select
                   value={localFilters[key] || ""}
                   onChange={(e) => updateFilter(key, e.target.value)}
-                  disabled={isGemDisabled}
                   className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-sm text-slate-700 outline-none transition focus:border-orange-400 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-slate-100"
                 >
-                  <option value="">
-                    {isGemDisabled ? "Select parent first" : "All"}
-                  </option>
+                  <option value="">All</option>
                   {options.map((v, i) => {
                     const value = typeof v === "object" ? v.name : v;
                     return (

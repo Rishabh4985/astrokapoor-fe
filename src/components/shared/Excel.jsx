@@ -1,8 +1,6 @@
-import React, { useContext } from "react";
+import React from "react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
-import { AdminContext } from "../../context/AdminContext";
-import { SellerContext } from "../../context/SellerContext";
 import { useAuth } from "../../context/AuthContext";
 import { Upload, FileDown } from "lucide-react";
 import axios from "axios";
@@ -10,9 +8,7 @@ import axios from "axios";
 const API_BASE = import.meta.env.VITE_API_URL;
 
 const Excel = ({ onImport, onExport }) => {
-  const { currentSeller, isAdmin, authToken } = useAuth();
-  const adminContext = useContext(AdminContext);
-  const sellerContext = useContext(SellerContext);
+  const { isAdmin, authToken } = useAuth();
   const showImport = isAdmin;
 
   const headerMap = {
@@ -78,10 +74,20 @@ const Excel = ({ onImport, onExport }) => {
       ["Air Bill No", "airBillNo"],
       ["Airbill No", "airBillNo"],
       ["SKU No", "skuNo"],
+      ["Gem", "gems"],
+      ["Gemstone", "gems"],
+      ["Gem 1", "gems1"],
       ["Gems-1", "gems1"],
+      ["Gem-1", "gems1"],
+      ["Gem 2", "gems2"],
       ["Gems-2", "gems2"],
+      ["Gem-2", "gems2"],
+      ["Gem 3", "gems3"],
       ["Gems-3", "gems3"],
+      ["Gem-3", "gems3"],
+      ["Gem 4", "gems4"],
       ["Gems-4", "gems4"],
+      ["Gem-4", "gems4"],
     ];
 
     aliasEntries.forEach(([label, field]) => {
@@ -156,7 +162,7 @@ const Excel = ({ onImport, onExport }) => {
     return `${year}-${month}-${day}`;
   };
 
-  const parseSlashDate = (first, second, year, preferMonthFirst = false) => {
+  const parseSlashDate = (first, second, year, preferDayFirst = true) => {
     const firstNum = Number(first);
     const secondNum = Number(second);
 
@@ -174,16 +180,16 @@ const Excel = ({ onImport, onExport }) => {
       return toValidDate(year, firstNum, secondNum);
     }
 
-    if (preferMonthFirst) {
+    if (preferDayFirst) {
       return (
-        toValidDate(year, firstNum, secondNum) ||
-        toValidDate(year, secondNum, firstNum)
+        toValidDate(year, secondNum, firstNum) ||
+        toValidDate(year, firstNum, secondNum)
       );
     }
 
     return (
-      toValidDate(year, secondNum, firstNum) ||
-      toValidDate(year, firstNum, secondNum)
+      toValidDate(year, firstNum, secondNum) ||
+      toValidDate(year, secondNum, firstNum)
     );
   };
 
@@ -230,7 +236,7 @@ const Excel = ({ onImport, onExport }) => {
             : `20${third}`
           : third;
 
-      // Import source sheets commonly use MM/DD/YYYY.
+      // Prefer DD/MM/YYYY for ambiguous values.
       const parsed = parseSlashDate(first, second, year, true);
       if (parsed) return toYmd(parsed);
     }
@@ -251,23 +257,21 @@ const Excel = ({ onImport, onExport }) => {
     return toYmd(localDate);
   };
 
-  const buildChunkErrorMessage = (err, chunkStartIndex) => {
+  const buildUploadErrorMessage = (err) => {
     const serverData = err?.response?.data;
     const serverMessage = serverData?.message;
     const errorEntries = Array.isArray(serverData?.errors) ? serverData.errors : [];
 
     if (errorEntries.length > 0) {
       const formatEntry = (entry) => {
-        const localRowFromIndex =
+        const rowFromIndex =
           Number.isInteger(entry?.index) && entry.index >= 0
             ? entry.index + 1
             : null;
-        const localRow =
-          localRowFromIndex ||
+        const rowNumber =
+          rowFromIndex ||
           (Number.isInteger(entry?.row) && entry.row > 0 ? entry.row : null);
-        const absoluteRow =
-          localRow !== null ? chunkStartIndex + localRow - 1 : null;
-        const rowText = absoluteRow !== null ? `row ${absoluteRow}` : "a row";
+        const rowText = rowNumber !== null ? `row ${rowNumber}` : "a row";
 
         const fieldText = entry?.field ? ` [${entry.field}]` : "";
         const valueText =
@@ -279,8 +283,8 @@ const Excel = ({ onImport, onExport }) => {
         return `${rowText}${fieldText}: ${detail}${valueText}`;
       };
 
-      const sample = errorEntries.slice(0, 3).map(formatEntry).join("; ");
-      const moreCount = errorEntries.length - 3;
+      const sample = errorEntries.slice(0, 10).map(formatEntry).join("; ");
+      const moreCount = errorEntries.length - 10;
       const moreText = moreCount > 0 ? `; +${moreCount} more errors` : "";
       const prefix = serverMessage ? `${serverMessage}. ` : "";
 
@@ -291,57 +295,72 @@ const Excel = ({ onImport, onExport }) => {
   };
 
   const uploadRecordsToBackend = async (records) => {
-    const chunkSize = 100;
     if (!isAdmin) {
       toast.error("Only admin users can import records.");
-      return;
+      return { inserted: 0, attempted: 0 };
     }
 
     if (!authToken) {
       toast.error("Session expired. Please log in again.");
-      return;
+      return { inserted: 0, attempted: 0 };
     }
 
-    for (let i = 0; i < records.length; i += chunkSize) {
-      const chunk = records.slice(i, i + chunkSize);
-      try {
-        await axios.post(
-          `${API_BASE}/admin/import-records`,
-          { records: chunk },
-          {
-            headers: { Authorization: `Bearer ${authToken}` },
-          },
-        );
+    try {
+      const response = await axios.post(
+        `${API_BASE}/admin/import-records`,
+        { records },
+        {
+          headers: { Authorization: `Bearer ${authToken}` },
+        },
+      );
 
-        toast.info(`Uploaded records ${i + 1} to ${i + chunk.length}`);
-      } catch (err) {
-        const chunkStartIndex = i + 1;
-        const details = buildChunkErrorMessage(err, chunkStartIndex);
-        console.error(
-          `Chunk upload failed for records ${chunkStartIndex}-${i + chunk.length}: ${details}`,
-        );
-        if (err?.response?.data) {
-          console.error("Import API response:", err.response.data);
-        }
-        console.error("Chunk upload failed:", {
-          chunkStart: chunkStartIndex,
-          chunkEnd: i + chunk.length,
-          details,
-          server: err?.response?.data,
-        });
-        toast.error(
-          `Failed to upload records ${i + 1} to ${i + chunk.length} (${details})`,
-        );
-        throw err;
+      const attempted =
+        typeof response?.data?.attempted === "number"
+          ? response.data.attempted
+          : records.length;
+      const inserted =
+        typeof response?.data?.inserted === "number"
+          ? response.data.inserted
+          : attempted;
+
+      return { inserted, attempted };
+    } catch (err) {
+      const details = buildUploadErrorMessage(err);
+      console.error(`Import upload failed: ${details}`);
+      if (err?.response?.data) {
+        console.error("Import API response:", err.response.data);
       }
+      const errorEntries = Array.isArray(err?.response?.data?.errors)
+        ? err.response.data.errors
+        : [];
+      if (errorEntries.length > 0) {
+        console.error("Import validation errors (row-wise):");
+        errorEntries.forEach((entry) => {
+          const rowNumber = Number.isInteger(entry?.row)
+            ? entry.row
+            : Number.isInteger(entry?.index)
+              ? entry.index + 1
+              : null;
+          const fieldText = entry?.field ? ` [${entry.field}]` : "";
+          const detail = entry?.error || entry?.message || "Validation failed";
+          const valueText =
+            entry?.value !== undefined && entry?.value !== null && entry?.value !== ""
+              ? ` (value: ${entry.value})`
+              : "";
+          console.error(
+            `${rowNumber !== null ? `row ${rowNumber}` : "row ?"}${fieldText}: ${detail}${valueText}`,
+          );
+        });
+      }
+      toast.error(`Import rejected (${details})`);
+      throw err;
     }
-
-    toast.success("All records uploaded successfully!");
   };
 
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     if (!files.length) return;
+    e.target.value = "";
 
     const allRecords = [];
     let filesProcessed = 0;
@@ -442,38 +461,30 @@ const Excel = ({ onImport, onExport }) => {
           filesProcessed++;
 
           if (filesProcessed === files.length) {
-            const sortedRecords = allRecords.sort((a, b) => {
+            const sortedRecords = [...allRecords].sort((a, b) => {
               const dateA = new Date(a.dateOfPayment || 0);
               const dateB = new Date(b.dateOfPayment || 0);
               return dateB - dateA;
             });
-            if (onImport) onImport(sortedRecords);
 
-            if (isAdmin && adminContext?.importRecords) {
-              adminContext.importRecords(sortedRecords);
-            } else if (currentSeller && sellerContext?.importSellerRecords) {
-              const sellerEmail = currentSeller.email.toLowerCase().trim();
-
-              const sellerRecords = sortedRecords.filter((record) => {
-                const handler = (record.handlerId || "")
-                  .toString()
-                  .toLowerCase()
-                  .trim();
-                return !handler || handler === sellerEmail;
-              });
-
-              if (sellerRecords.length === 0) {
-                toast.warn(
-                  "No valid records found for your account in the uploaded file.",
-                );
-                return;
-              }
-
-              sellerContext.importSellerRecords(sellerRecords);
+            if (!sortedRecords.length) {
+              toast.warn("No valid records found in the selected file.");
+              return;
             }
 
-            toast.success("Excel parsed successfully!");
-            await uploadRecordsToBackend(sortedRecords);
+            const importSummary = await uploadRecordsToBackend(sortedRecords);
+
+            if (onImport) {
+              await onImport(sortedRecords);
+            }
+
+            if (importSummary.inserted === importSummary.attempted) {
+              toast.success(`Imported ${importSummary.inserted} records successfully.`);
+            } else {
+              toast.warn(
+                `Imported ${importSummary.inserted} of ${importSummary.attempted} records.`,
+              );
+            }
           }
         } catch (err) {
           if (!err?.isAxiosError) {

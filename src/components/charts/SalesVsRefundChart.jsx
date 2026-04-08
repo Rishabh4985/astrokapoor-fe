@@ -3,8 +3,8 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { PieChartIcon } from "lucide-react";
 
 const COLORS = {
-  sales: "#22c55e",
-  refunds: "#f97316",
+  sales: "#06b6d4",
+  refunds: "#f43f5e",
 };
 
 const SalesVsRefundChart = ({ data = [], loading = false }) => {
@@ -36,7 +36,7 @@ const SalesVsRefundChart = ({ data = [], loading = false }) => {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 shadow-sm sm:p-6">
-      <div className="mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-emerald-400 to-orange-400" />
+      <div className="mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-cyan-400 to-rose-500" />
       <div className="mb-4 flex items-center gap-2">
         <PieChartIcon className="h-5 w-5 text-slate-700" />
         <h3 className="text-lg font-semibold text-slate-800">Sales vs Refund</h3>
@@ -95,23 +95,23 @@ const SalesVsRefundChart = ({ data = [], loading = false }) => {
           </div>
 
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            <div className="rounded-xl border border-cyan-200 bg-cyan-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-cyan-700">
                 Sales
               </p>
-              <p className="text-xl font-bold text-emerald-800">
+              <p className="text-xl font-bold text-cyan-800">
                 {new Intl.NumberFormat("en-IN").format(sales)}
               </p>
-              <p className="text-xs text-emerald-700/80">{salesPct}% share</p>
+              <p className="text-xs text-cyan-700/80">{salesPct}% share</p>
             </div>
-            <div className="rounded-xl border border-orange-200 bg-orange-50 p-3">
-              <p className="text-xs font-semibold uppercase tracking-wide text-orange-700">
+            <div className="rounded-xl border border-rose-200 bg-rose-50 p-3">
+              <p className="text-xs font-semibold uppercase tracking-wide text-rose-700">
                 Refunds
               </p>
-              <p className="text-xl font-bold text-orange-800">
+              <p className="text-xl font-bold text-rose-800">
                 {new Intl.NumberFormat("en-IN").format(refunds)}
               </p>
-              <p className="text-xs text-orange-700/80">{refundsPct}% share</p>
+              <p className="text-xs text-rose-700/80">{refundsPct}% share</p>
             </div>
           </div>
         </div>

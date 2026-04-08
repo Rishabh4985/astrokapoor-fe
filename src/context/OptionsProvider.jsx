@@ -17,7 +17,6 @@ const OptionsProvider = ({ children }) => {
     gems2: [],
     gems3: [],
     gems4: [],
-    gemsHierarchy: {},
   });
 
   const [requiredFields, setRequiredFields] = useState([]);

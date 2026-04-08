@@ -2,27 +2,81 @@ import React, { useMemo } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { BarChart3 } from "lucide-react";
 
-const STATUS_COLORS = [
+const STATUS_COLOR_MAP = {
+  "consultation done": "#7c3aed",
+  paid: "#16a34a",
+  refunded: "#dc2626",
+  pending: "#f59e0b",
+};
+
+const FALLBACK_STATUS_COLORS = [
+  "#2563eb",
+  "#06b6d4",
+  "#ec4899",
+  "#4f46e5",
+  "#14b8a6",
   "#f97316",
-  "#f59e0b",
-  "#fb923c",
-  "#22c55e",
-  "#84cc16",
-  "#eab308",
-  "#ef4444",
-  "#f43f5e",
+  "#65a30d",
+  "#0ea5e9",
+  "#be123c",
+  "#a21caf",
 ];
+
+const normalizeStatusKey = (name = "") =>
+  name
+    .toString()
+    .trim()
+    .toLowerCase()
+    .replace(/[_-]+/g, " ")
+    .replace(/\s+/g, " ");
+
+const getStatusColor = (name = "", fallbackIndex = 0) => {
+  const key = normalizeStatusKey(name);
+
+  if (key in STATUS_COLOR_MAP) return STATUS_COLOR_MAP[key];
+  if (key.includes("consultation")) return STATUS_COLOR_MAP["consultation done"];
+  if (key.includes("refund")) return STATUS_COLOR_MAP.refunded;
+  if (key.includes("pending")) return STATUS_COLOR_MAP.pending;
+  if (key.includes("paid")) return STATUS_COLOR_MAP.paid;
+
+  return FALLBACK_STATUS_COLORS[fallbackIndex % FALLBACK_STATUS_COLORS.length];
+};
+
+const hexToRgba = (hex, alpha = 1) => {
+  const cleanHex = hex.replace("#", "");
+  if (cleanHex.length !== 6) return `rgba(15, 23, 42, ${alpha})`;
+
+  const r = Number.parseInt(cleanHex.slice(0, 2), 16);
+  const g = Number.parseInt(cleanHex.slice(2, 4), 16);
+  const b = Number.parseInt(cleanHex.slice(4, 6), 16);
+
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+};
 
 const StatusChart = ({ data = [], loading = false }) => {
   const normalizedData = useMemo(
-    () =>
-      (data || [])
-        .map((item, index) => ({
-          name: item?.name || "Unknown",
-          value: Number(item?.value) || 0,
-          color: STATUS_COLORS[index % STATUS_COLORS.length],
-        }))
-        .filter((item) => item.value > 0),
+    () => {
+      let fallbackIndex = 0;
+
+      return (data || [])
+        .map((item) => {
+          const name = item?.name || "Unknown";
+          const value = Number(item?.value) || 0;
+          const statusKey = normalizeStatusKey(name);
+          const isKnownStatus =
+            statusKey in STATUS_COLOR_MAP ||
+            statusKey.includes("consultation") ||
+            statusKey.includes("refund") ||
+            statusKey.includes("pending") ||
+            statusKey.includes("paid");
+          const color = getStatusColor(name, fallbackIndex);
+
+          if (!isKnownStatus) fallbackIndex += 1;
+
+          return { name, value, color };
+        })
+        .filter((item) => item.value > 0);
+    },
     [data],
   );
 
@@ -31,7 +85,7 @@ const StatusChart = ({ data = [], loading = false }) => {
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-gradient-to-b from-white to-slate-50 p-5 shadow-sm sm:p-6">
-      <div className="mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-orange-500 to-amber-400" />
+      <div className="mb-4 h-1.5 w-28 rounded-full bg-gradient-to-r from-violet-500 via-blue-500 to-emerald-500" />
       <div className="mb-4 flex items-center gap-2">
         <BarChart3 className="h-5 w-5 text-slate-700" />
         <h3 className="text-lg font-semibold text-slate-800">Status Summary</h3>
@@ -95,7 +149,11 @@ const StatusChart = ({ data = [], loading = false }) => {
               return (
                 <div
                   key={item.name}
-                  className="rounded-xl border border-slate-200 bg-white p-3"
+                  className="rounded-xl border bg-white p-3"
+                  style={{
+                    borderColor: hexToRgba(item.color, 0.3),
+                    backgroundColor: hexToRgba(item.color, 0.07),
+                  }}
                 >
                   <div className="mb-2 flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">

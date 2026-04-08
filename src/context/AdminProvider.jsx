@@ -184,21 +184,17 @@ const AdminProvider = ({ children }) => {
 
   // CRUD: Add / Update / Delete / GetById
 
-  const importRecords = useCallback(
-    async (importedData) => {
-      try {
-        setError(null);
-        setRecords((prev) => [...importedData.map(cleanRecord), ...prev]);
-        await fetchRecords(1, filters);
-
-        return { success: true };
-      } catch (err) {
-        console.error("Import state update failed", err);
-        return { success: false };
-      }
-    },
-    [fetchRecords, filters, cleanRecord],
-  );
+  const importRecords = useCallback(async () => {
+    try {
+      setError(null);
+      setPage(1);
+      await fetchRecords(1, filters);
+      return { success: true };
+    } catch (err) {
+      console.error("Import refresh failed", err);
+      return { success: false };
+    }
+  }, [fetchRecords, filters]);
 
   const addRecord = useCallback(
     async (newRecord) => {
