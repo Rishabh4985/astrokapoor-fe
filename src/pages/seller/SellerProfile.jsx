@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import DateField from "../../components/shared/DateField";
 import { useAuth } from "../../context/AuthContext";
+import SellerTimeFilter from "../../components/shared/SellerTimeFilter";
+
 
 const API_BASE = `${import.meta.env.VITE_API_URL}/seller`;
 
@@ -41,7 +43,7 @@ const formatCurrency = (value) =>
 
 const SellerProfile = () => {
   const { authToken, setCurrentSeller } = useAuth();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
@@ -57,10 +59,16 @@ const SellerProfile = () => {
     thisMonthSales: 0,
     thisMonthRefund: 0,
     pendingFollowups: 0,
+    pendingFollowupsAmount: 0,
+    totalConvertedRecords: 0,
+    totalConvertedAmount: 0,
     monthlyTarget: 0,
     achievementPct: 0,
     remainingTarget: 0,
+    totalRefundedRecords: 0,
   });
+
+  const[timeFilter, setTimeFilter] = useState("monthly");  
 
   const applyProfileToForm = useCallback((profile = {}) => {
     const fullName =
@@ -86,12 +94,12 @@ const SellerProfile = () => {
         axios.get(`${API_BASE}/me`, {
           headers: { Authorization: `Bearer ${authToken}` },
         }),
-        axios.get(`${API_BASE}/profile/metrics`, {
+        axios.get(`${API_BASE}/profile/metrics?filter=monthly`, { // Always load monthly for initial data
           headers: { Authorization: `Bearer ${authToken}` },
         }),
       ]);
 
-      console.log("METRICS 👉", metricsRes.data);    // log
+      console.log("METRICS 👉", metricsRes.data); // 👈 ADD THIS LINE
 
       const profileData = profileRes.data || {};
       applyProfileToForm(profileData);
@@ -104,9 +112,32 @@ const SellerProfile = () => {
     }
   }, [authToken, applyProfileToForm, setCurrentSeller]);
 
+  const fetchMetricsOnly = useCallback(async () => {
+    if (!authToken) return;
+
+    try {
+      const metricsRes = await axios.get(`${API_BASE}/profile/metrics`, {
+  params: { filter: timeFilter },
+  headers: { Authorization: `Bearer ${authToken}` },
+});
+
+      console.log("METRICS 👉", metricsRes.data);
+      setMetrics((prev) => ({ ...prev, ...(metricsRes.data || {}) }));
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to load metrics");
+    }
+  }, [authToken, timeFilter]);
+
+
   useEffect(() => {
     fetchProfileData();
-  }, [fetchProfileData]);
+  }, [fetchProfileData]); // Only run on mount and when fetchProfileData changes
+
+  useEffect(() => {
+    if (timeFilter) {
+      fetchMetricsOnly(); // Smooth filter changes without loading state
+    }
+  }, [timeFilter, fetchMetricsOnly]);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -145,9 +176,11 @@ const SellerProfile = () => {
       applyProfileToForm(updatedProfile);
       setCurrentSeller?.(updatedProfile);
 
-      const metricsRes = await axios.get(`${API_BASE}/profile/metrics`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
+
+const metricsRes = await axios.get(`${API_BASE}/profile/metrics`, {
+  params: { filter: timeFilter },
+  headers: { Authorization: `Bearer ${authToken}` },
+});
       setMetrics((prev) => ({ ...prev, ...(metricsRes.data || {}) }));
 
       setIsEditing(false);
@@ -169,6 +202,10 @@ const SellerProfile = () => {
 
   const achievementPct = Number(metrics.achievementPct || 0);
   const achievementWidth = Math.min(100, Math.max(0, achievementPct));
+
+  const pendingFollowupsAmount = Number(metrics.pendingFollowupsAmount || 0);
+  const totalConvertedAmount = Number(metrics.totalConvertedAmount || 0);
+
   const dashboardCards = useMemo(
     () => [
       {
@@ -182,7 +219,7 @@ const SellerProfile = () => {
       {
         title: "Pending Followups",
         value: new Intl.NumberFormat("en-IN").format(Number(metrics.pendingFollowups || 0)),
-        secondary: undefined,
+        secondary: pendingFollowupsAmount > 0 ? `↗ ${formatCurrency(pendingFollowupsAmount)}` : undefined,
         icon: ListChecks,
         iconClass: "bg-amber-100 text-amber-700",
         dotClass: "bg-amber-500",
@@ -190,7 +227,7 @@ const SellerProfile = () => {
       {
         title: "Total Converted Record",
         value: new Intl.NumberFormat("en-IN").format(Number(metrics.totalConvertedRecords || 0)),
-        secondary: undefined,
+        secondary: totalConvertedAmount > 0 ? `↗ ${formatCurrency(totalConvertedAmount)}` : undefined,
         icon: FileText,
         iconClass: "bg-violet-100 text-violet-700",
         dotClass: "bg-violet-500",
@@ -204,7 +241,7 @@ const SellerProfile = () => {
         dotClass: "bg-rose-500",
       },
     ],
-    [metrics],
+    [metrics, pendingFollowupsAmount, totalConvertedAmount],
   );
 
   if (loading) {
@@ -358,7 +395,7 @@ const SellerProfile = () => {
                 type="button"
                 onClick={() => {
                   setIsEditing(false);
-                  fetchProfileData();
+                  // No need to refetch data on cancel
                 }}
                 className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-orange-300 hover:bg-orange-50"
               >
@@ -370,11 +407,16 @@ const SellerProfile = () => {
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-4">
-          <h3 className="text-xl font-black tracking-tight text-slate-900">
-            Performance Snapshot
-          </h3>
-        </div>
+      <div className="border-b border-slate-100 px-5 py-4 flex justify-between items-center">
+  <h3 className="text-xl font-black tracking-tight text-slate-900">
+    Performance Snapshot
+  </h3>
+
+  <SellerTimeFilter 
+    value={timeFilter} 
+    onChange={setTimeFilter} 
+  />
+</div>
 
         <div className="space-y-5 p-4 sm:p-5">
           <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">

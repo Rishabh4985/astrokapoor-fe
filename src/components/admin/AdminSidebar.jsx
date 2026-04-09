@@ -10,6 +10,7 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 
 const AdminSidebar = ({ isMobile, onClose }) => {
@@ -20,7 +21,7 @@ const AdminSidebar = ({ isMobile, onClose }) => {
     { to: "/admin/sales-records", label: "Sales Records", icon: FileText },
     { to: "/admin/sales-lookup", label: "Sales Lookup", icon: Search },
     { to: "/admin/add-record", label: "Add Record", icon: PlusCircle },
-    { to: "/admin/profile", label: "Profile", icon: User },
+    { to: "/admin/sales-overview", label: "Sales Performance Overview", icon: TrendingUp },
   ];
 
   const managementItems = [
@@ -29,6 +30,7 @@ const AdminSidebar = ({ isMobile, onClose }) => {
       label: "Manage Salesperson",
       icon: Users,
     },
+    { to: "/admin/profile", label: "Profile", icon: User },
   ];
 
   const navLinkStyles = ({ isActive }) =>

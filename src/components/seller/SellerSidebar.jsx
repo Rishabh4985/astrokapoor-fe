@@ -61,11 +61,12 @@ const SellerSidebar = ({ isMobile, onClose }) => {
     <aside
       className={`
         relative h-full overflow-hidden border-r border-orange-300/30
-        bg-gradient-to-b from-stone-950 via-orange-950 to-amber-800
+         bg-gradient-to-b from-stone-950 via-orange-950 to-amber-800
         text-white shadow-2xl
         ${isMobile ? "w-80 max-w-[86vw]" : "w-72"}
       `}
     >
+
       <div className="pointer-events-none absolute -left-20 -top-16 h-44 w-44 rounded-full bg-orange-300/25 blur-2xl" />
       <div className="pointer-events-none absolute -bottom-16 -right-16 h-44 w-44 rounded-full bg-amber-200/20 blur-2xl" />
       <div className="flex h-full flex-col">
