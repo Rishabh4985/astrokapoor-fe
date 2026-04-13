@@ -7,7 +7,7 @@ import AdminSalesRecordList from "../pages/admin/AdminSalesRecordList";
 import AdminLayout from "../layouts/AdminLayout";
 import AdminAddRecord from "../pages/admin/AdminAddRecord";
 import ManageSalesPerson from "../pages/admin/ManageSalesPerson";
-// import AdminSalesOverview from "../pages/admin/AdminSalesOverview";
+import AdminSalesOverview from "../pages/admin/AdminSalesOverview";
 
 const AdminRoutes = () => {
   const { userRole, isAuthenticated } = useAuth();
@@ -27,7 +27,7 @@ const AdminRoutes = () => {
         <Route path="add-record" element={<AdminAddRecord />} />
         <Route path="manage-salesperson" element={<ManageSalesPerson />} />
         <Route path="*" element={<Navigate to="dashboard" replace />} />
-        {/* <Route path="sales-overview" element={<AdminSalesOverview />} /> */}
+        <Route path="sales-overview" element={<AdminSalesOverview />} />
       </Route>
     </Routes>
   );

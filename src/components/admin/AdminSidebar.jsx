@@ -10,6 +10,7 @@ import {
   ChevronRight,
   X,
   ShieldCheck,
+  TrendingUp,
 } from "lucide-react";
 
 const AdminSidebar = ({ isMobile, onClose }) => {
@@ -20,7 +21,11 @@ const AdminSidebar = ({ isMobile, onClose }) => {
     { to: "/admin/sales-records", label: "Sales Records", icon: FileText },
     { to: "/admin/sales-lookup", label: "Sales Lookup", icon: Search },
     { to: "/admin/add-record", label: "Add Record", icon: PlusCircle },
-    // {to: "/admin/sales-overview",label:"Sales Performance Overview", icon:TrendingUp},
+    {
+      to: "/admin/sales-overview",
+      label: "Sales Performance Overview",
+      icon: TrendingUp,
+    },
     { to: "/admin/profile", label: "Profile", icon: User },
   ];
 
