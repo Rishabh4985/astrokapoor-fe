@@ -6,7 +6,7 @@ import { toast } from "react-toastify";
 import MobileFields from "./MobileFields";
 import ExistingUserSearch from "./ExistingUserSearch";
 import DateField from "./DateField";
-import { expectedHeaders, headerLabels } from "../../utils/utils";
+import { expectedHeaders, headerLabels, gemFieldOrder } from "../../utils/utils";
 import {
   validateEmail,
   validateName,
@@ -15,7 +15,6 @@ import {
   detectPhoneIso,
   buildFullPhone,
 } from "../../utils/formUtils";
-import { gemFieldOrder } from "../../utils/gemsHierarchyUtils";
 
 const LabelWithAsterisk = ({ text }) => (
   <label className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
@@ -26,9 +25,10 @@ const LabelWithAsterisk = ({ text }) => (
 // ============ MAIN COMPONENT ============
 
 const AddRecordForm = ({ onAdd }) => {
-  const { authToken, userRole } = useAuth();
-  const seller = JSON.parse(localStorage.getItem("currentSeller"));
-  const isSeller = !!seller?.email;
+  const { authToken, userRole, currentSeller, logout } = useAuth();
+  const sellerEmail =
+    userRole === "seller" ? currentSeller?.email?.toLowerCase().trim() || "" : "";
+  const isSeller = userRole === "seller" && Boolean(sellerEmail);
 
   const [formData, setFormData] = useState({
     ...expectedHeaders,
@@ -36,7 +36,7 @@ const AddRecordForm = ({ onAdd }) => {
     gems2: [],
     gems3: [],
     gems4: [],
-    handlerId: isSeller ? seller.email : "",
+    handlerId: isSeller ? sellerEmail : "",
     countryIso: "",
     mobile1CountryIso: "",
     mobile2CountryIso: "",
@@ -51,12 +51,14 @@ const AddRecordForm = ({ onAdd }) => {
   const [openMultiDropdowns, setOpenMultiDropdowns] = useState({});
   const [dropdownDirection, setDropdownDirection] = useState({});
   const [optionSearch, setOptionSearch] = useState({});
+  const [isSearchingExistingUser, setIsSearchingExistingUser] = useState(false);
   const multiSelectRefs = useRef({});
+  const latestSearchRequestIdRef = useRef(0);
+  const searchAbortControllerRef = useRef(null);
   const { dropdowns, requiredFields, loading, getStatesByCountry } =
     useContext(OptionsContext);
   const multiSelectFields = [
     "service",
-    "category",
     "handleBy",
     ...gemFieldOrder,
   ];
@@ -91,6 +93,21 @@ const AddRecordForm = ({ onAdd }) => {
     return () => {
       document.removeEventListener("mousedown", handleOutsideClick);
       document.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isSeller) return;
+
+    setFormData((prev) => {
+      if (prev.handlerId === sellerEmail) return prev;
+      return { ...prev, handlerId: sellerEmail };
+    });
+  }, [isSeller, sellerEmail]);
+
+  useEffect(() => {
+    return () => {
+      searchAbortControllerRef.current?.abort();
     };
   }, []);
 
@@ -241,12 +258,15 @@ const AddRecordForm = ({ onAdd }) => {
       dateOfPayment: formData.dateOfPayment
         ? formData.dateOfPayment
         : getLocalTodayYmd(),
-      handlerId: isSeller ? seller.email : formData.handlerId || "admin",
+      handlerId: isSeller ? sellerEmail : formData.handlerId || "admin",
     };
 
     setIsSubmitting(true);
     try {
-      await onAdd(newRecord);
+      const addResult = await onAdd(newRecord);
+      if (addResult === false) {
+        throw new Error("Failed to add record. Please try again.");
+      }
 
       toast.success("Record Added Successfully!");
 
@@ -297,7 +317,7 @@ const AddRecordForm = ({ onAdd }) => {
         gems2: [],
         gems3: [],
         gems4: [],
-        handlerId: isSeller ? seller.email : "",
+        handlerId: isSeller ? sellerEmail : "",
         countryIso: "",
         mobile1CountryIso: "",
         mobile2CountryIso: "",
@@ -338,6 +358,12 @@ const AddRecordForm = ({ onAdd }) => {
           : `${API_BASE}`;
 
     const url = `${baseUrl}/users/search?keyword=${encodeURIComponent(keyword)}`;
+    const requestId = latestSearchRequestIdRef.current + 1;
+    latestSearchRequestIdRef.current = requestId;
+    searchAbortControllerRef.current?.abort();
+    const controller = new AbortController();
+    searchAbortControllerRef.current = controller;
+    setIsSearchingExistingUser(true);
 
     try {
       const response = await fetch(url, {
@@ -345,10 +371,32 @@ const AddRecordForm = ({ onAdd }) => {
           Authorization: `Bearer ${authToken}`,
           "Content-Type": "application/json",
         },
+        signal: controller.signal,
       });
-      const user = await response.json();
+      if (requestId !== latestSearchRequestIdRef.current) return;
 
-      if (Array.isArray(user) && user.length > 0) {
+      const responseData = await response.json().catch(() => null);
+
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          toast.error("Session expired. Please log in again.");
+          setExistingRecords([]);
+          setSelectedRecord(null);
+          logout();
+          return;
+        }
+
+        const errorMessage =
+          responseData?.message ||
+          responseData?.error ||
+          "Could not search for user. Please try again.";
+        toast.error(errorMessage);
+        return;
+      }
+
+      const user = Array.isArray(responseData) ? responseData : [];
+
+      if (user.length > 0) {
         setExistingRecords(user);
 
         const selected = user[0];
@@ -390,7 +438,9 @@ const AddRecordForm = ({ onAdd }) => {
           amount: selected.amount || "",
           pendingAmount: selected.pendingAmount || "",
           refund: selected.refund || "",
-          category: Array.isArray(selected.category) ? selected.category : (selected.category ? [selected.category] : []),
+          category: Array.isArray(selected.category)
+            ? (selected.category[0] || "")
+            : (selected.category || ""),
           gems: Array.isArray(selected.gems) ? selected.gems : (selected.gems ? [selected.gems] : []),
           gems1: Array.isArray(selected.gems1) ? selected.gems1 : (selected.gems1 ? [selected.gems1] : []),
           gems2: Array.isArray(selected.gems2) ? selected.gems2 : (selected.gems2 ? [selected.gems2] : []),
@@ -403,12 +453,18 @@ const AddRecordForm = ({ onAdd }) => {
       } else {
         setExistingRecords([]);
         setSelectedRecord(null);
-        toast.error("No user found with this input.");
+        toast.info("No user found with this input.");
       }
     } catch (error) {
+      if (error?.name === "AbortError") return;
+      if (requestId !== latestSearchRequestIdRef.current) return;
       const errorMsg =
         error?.message || "Could not search for user. Please try again.";
       toast.error(errorMsg);
+    } finally {
+      if (requestId === latestSearchRequestIdRef.current) {
+        setIsSearchingExistingUser(false);
+      }
     }
   };
 
@@ -559,6 +615,7 @@ const AddRecordForm = ({ onAdd }) => {
           searchEmail={searchEmail}
           setSearchEmail={setSearchEmail}
           handleUserSearch={handleUserSearch}
+          isSearching={isSearchingExistingUser}
           existingRecords={existingRecords}
           selectedRecord={selectedRecord}
           setSelectedRecord={setSelectedRecord}

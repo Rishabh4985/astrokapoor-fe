@@ -1,17 +1,13 @@
 import React, { useContext } from "react";
 import AddRecordForm from "../../components/shared/AddRecordForm";
 import { SellerContext } from "../../context/SellerContext";
-import {
-  PlusCircle,
-  UserPlus2,
-  ClipboardEdit,
-} from "lucide-react";
+import { PlusCircle, UserPlus2, ClipboardEdit } from "lucide-react";
 
 const SellerAddRecord = () => {
   const { addSellerRecord } = useContext(SellerContext);
 
   if (typeof addSellerRecord !== "function") {
-    console.error("❌ addSellerRecord is not ready yet.");
+    console.error("addSellerRecord is not ready yet.");
     return (
       <div className="p-10 text-center text-red-500">
         Seller context not ready. Please refresh or log in again.
@@ -20,11 +16,8 @@ const SellerAddRecord = () => {
   }
 
   const handleAddRecord = async (newRecord) => {
-    try {
-      await addSellerRecord(newRecord);
-    } catch (err) {
-      console.error("❌ Failed to add seller record:", err);
-    }
+    // Let AddRecordForm handle success/error UX from the promise result.
+    await addSellerRecord(newRecord);
   };
 
   return (

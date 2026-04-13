@@ -26,7 +26,7 @@ const formatDate = (date) => {
 };
 
 const SellerProvider = ({ children }) => {
-  const { authToken, currentSeller } = useAuth();
+  const { authToken, currentSeller, logout } = useAuth();
 
   const [sellerRecords, setSellerRecords] = useState([]);
   const [page, setPage] = useState(1);
@@ -59,6 +59,13 @@ const SellerProvider = ({ children }) => {
   });
 
   const isMountedRef = useRef(true);
+  const latestRecordsRequestIdRef = useRef(0);
+  const latestChartRequestIdRef = useRef({
+    "monthly-sales": 0,
+    "sales-vs-refund": 0,
+    "status-count": 0,
+  });
+  const unauthorizedHandledRef = useRef(false);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -66,6 +73,10 @@ const SellerProvider = ({ children }) => {
       isMountedRef.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    unauthorizedHandledRef.current = false;
+  }, [authToken]);
 
   const cleanRecord = useCallback((record) => {
     const omitKeys = (obj, keys) => {
@@ -99,9 +110,28 @@ const SellerProvider = ({ children }) => {
     });
   }, []);
 
+  const handleUnauthorizedError = useCallback(
+    (error, fallbackMessage = "Session expired. Please login again.") => {
+      const statusCode = error?.response?.status;
+      if (statusCode !== 401 && statusCode !== 403) {
+        return false;
+      }
+
+      if (!unauthorizedHandledRef.current) {
+        unauthorizedHandledRef.current = true;
+        toast.error(error?.response?.data?.message || fallbackMessage);
+        logout();
+      }
+      return true;
+    },
+    [logout],
+  );
+
   const fetchRecords = useCallback(
     async (pageNumber = 1, appliedFilters = {}) => {
       if (!authToken) return;
+      const requestId = latestRecordsRequestIdRef.current + 1;
+      latestRecordsRequestIdRef.current = requestId;
 
       try {
         setLoading(true);
@@ -127,6 +157,11 @@ const SellerProvider = ({ children }) => {
             : [];
 
         const cleanedData = dataArray.map(cleanRecord);
+        if (
+          !isMountedRef.current ||
+          requestId !== latestRecordsRequestIdRef.current
+        )
+          return;
 
         setSellerRecords(cleanedData);
 
@@ -137,12 +172,29 @@ const SellerProvider = ({ children }) => {
         );
         setPage(res.data.currentPage || res.data.page || pageNumber);
       } catch (error) {
-        console.log("Failed to fetch data", error);
+        if (
+          !isMountedRef.current ||
+          requestId !== latestRecordsRequestIdRef.current
+        )
+          return;
+        if (handleUnauthorizedError(error)) return;
+        console.error("Failed to fetch seller records", error);
       } finally {
-        setLoading(false);
+        if (
+          isMountedRef.current &&
+          requestId === latestRecordsRequestIdRef.current
+        ) {
+          setLoading(false);
+        }
       }
     },
-    [authToken, limit, cleanRecord, appendFilterParams],
+    [
+      authToken,
+      limit,
+      cleanRecord,
+      appendFilterParams,
+      handleUnauthorizedError,
+    ],
   );
 
   const fetchAllRecordsForExport = useCallback(
@@ -183,18 +235,32 @@ const SellerProvider = ({ children }) => {
 
         return allRecords;
       } catch (error) {
+        if (handleUnauthorizedError(error)) {
+          throw new Error("Session expired. Please login again.");
+        }
         console.error("Failed to fetch all seller records for export", error);
         throw new Error(
           error.response?.data?.message || "Failed to fetch records for export",
         );
       }
     },
-    [authToken, cleanRecord, filters, appendFilterParams],
+    [
+      authToken,
+      cleanRecord,
+      filters,
+      appendFilterParams,
+      handleUnauthorizedError,
+    ],
   );
 
   const fetchChartData = useCallback(
     async (chartType) => {
       if (!authToken) return [];
+      const requestId = (latestChartRequestIdRef.current[chartType] || 0) + 1;
+      latestChartRequestIdRef.current[chartType] = requestId;
+      const isStaleRequest = () =>
+        !isMountedRef.current ||
+        latestChartRequestIdRef.current[chartType] !== requestId;
 
       try {
         setChartData((prev) => ({
@@ -203,18 +269,7 @@ const SellerProvider = ({ children }) => {
         }));
 
         const params = new URLSearchParams();
-        Object.entries(filters).forEach(([key, value]) => {
-          if (value && value !== "all" && value !== "") {
-            if (Array.isArray(value)) {
-              value
-                .map((item) => item?.toString().trim())
-                .filter(Boolean)
-                .forEach((item) => params.append(key, item));
-            } else {
-              params.append(key, value.toString().trim());
-            }
-          }
-        });
+        appendFilterParams(params, filters);
 
         const url = params.toString()
           ? `${API_BASE}/charts/${chartType}?${params.toString()}`
@@ -231,7 +286,7 @@ const SellerProvider = ({ children }) => {
             ? response.data.records
             : [];
 
-        if (!isMountedRef.current) return [];
+        if (isStaleRequest()) return [];
 
         setChartData((prev) => ({
           ...prev,
@@ -245,7 +300,18 @@ const SellerProvider = ({ children }) => {
 
         return result;
       } catch (error) {
-        if (!isMountedRef.current) return [];
+        if (isStaleRequest()) return [];
+        if (handleUnauthorizedError(error)) {
+          setChartData((prev) => ({
+            ...prev,
+            [chartType]: {
+              ...prev[chartType],
+              loading: false,
+              error: "Session expired. Please login again.",
+            },
+          }));
+          return [];
+        }
 
         console.error(`Failed to fetch ${chartType} data:`, error);
         setChartData((prev) => ({
@@ -260,7 +326,7 @@ const SellerProvider = ({ children }) => {
         return [];
       }
     },
-    [authToken, filters],
+    [authToken, filters, appendFilterParams, handleUnauthorizedError],
   );
 
   const fetchMonthlySalesData = useCallback(
@@ -318,15 +384,20 @@ const SellerProvider = ({ children }) => {
     });
   }, []);
 
-  useEffect(() => {
-    setPage(1);
-  }, [filters]);
-
   const filtersString = JSON.stringify(filters);
+  const lastAppliedFiltersRef = useRef(filtersString);
 
   useEffect(() => {
     if (!authToken) return;
 
+    const filtersChanged = lastAppliedFiltersRef.current !== filtersString;
+    if (filtersChanged && page !== 1) {
+      lastAppliedFiltersRef.current = filtersString;
+      setPage(1);
+      return;
+    }
+
+    lastAppliedFiltersRef.current = filtersString;
     const parsedFilters = JSON.parse(filtersString);
     fetchRecords(page, parsedFilters);
   }, [page, authToken, fetchRecords, filtersString]);
@@ -341,7 +412,7 @@ const SellerProvider = ({ children }) => {
 
   const importSellerRecords = useCallback(
     (importedRecords) => {
-      const sellerEmail = currentSeller?.email.toLowerCase().trim();
+      const sellerEmail = currentSeller?.email?.toLowerCase().trim();
       if (!sellerEmail) return;
 
       const normalize = (val) =>
@@ -373,9 +444,13 @@ const SellerProvider = ({ children }) => {
   const addSellerRecord = useCallback(
     async (newRecord) => {
       try {
+        if (!authToken) throw new Error("No Auth Token");
         const normalize = (val) => val?.toString().toLowerCase().trim();
         const normalizePhone = (val) => val?.toString().trim();
-        const sellerEmail = currentSeller?.email.toLowerCase().trim();
+        const sellerEmail = currentSeller?.email?.toLowerCase().trim();
+        if (!sellerEmail) {
+          throw new Error("Seller identity not available");
+        }
 
         const recordToSend = {
           ...newRecord,
@@ -391,30 +466,26 @@ const SellerProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
-        const savedRecord = res.data.record || res.data;
-        const formattedRecord = cleanRecord(savedRecord);
-
-        setSellerRecords((prev) => {
-          const parseDate = (str) => {
-            const [day, month, year] = str.split("/");
-            return new Date(`${year}-${month}-${day}`);
-          };
-
-          const updated = [...prev, formattedRecord];
-
-          return updated.sort(
-            (a, b) => parseDate(b.dateOfPayment) - parseDate(a.dateOfPayment),
-          );
-        });
-
-        console.log("📥 Seller record added successfully");
+        if (res?.data) {
+          await fetchRecords(page, filters);
+        }
         return res;
       } catch (error) {
+        if (handleUnauthorizedError(error)) {
+          throw new Error("Session expired. Please login again.");
+        }
         console.error("Failed to add record", error);
         throw error;
       }
     },
-    [authToken, currentSeller, cleanRecord],
+    [
+      authToken,
+      currentSeller,
+      fetchRecords,
+      page,
+      filters,
+      handleUnauthorizedError,
+    ],
   );
 
   const updateSellerRecord = useCallback(
@@ -463,15 +534,17 @@ const SellerProvider = ({ children }) => {
           },
         );
 
-        fetchRecords(page, filters);
-        toast.success("Record updated successfully");
+        await fetchRecords(page, filters);
         return response;
       } catch (err) {
+        if (handleUnauthorizedError(err)) {
+          throw new Error("Session expired. Please login again.");
+        }
         toast.error(err.response?.data?.message || "Failed to update record");
         throw err;
       }
     },
-    [authToken, page, fetchRecords, filters],
+    [authToken, page, fetchRecords, filters, handleUnauthorizedError],
   );
 
   const updateSellerProfile = useCallback((updatedSeller) => {
@@ -487,12 +560,19 @@ const SellerProvider = ({ children }) => {
   const getRecordHistory = useCallback(
     async (recordId) => {
       if (!authToken) throw new Error("No Auth Token");
-      const res = await axios.get(`${API_BASE}/records/${recordId}/history`, {
-        headers: { Authorization: `Bearer ${authToken}` },
-      });
-      return res.data;
+      try {
+        const res = await axios.get(`${API_BASE}/records/${recordId}/history`, {
+          headers: { Authorization: `Bearer ${authToken}` },
+        });
+        return res.data;
+      } catch (error) {
+        if (handleUnauthorizedError(error)) {
+          throw new Error("Session expired. Please login again.");
+        }
+        throw error;
+      }
     },
-    [authToken],
+    [authToken, handleUnauthorizedError],
   );
 
   return (

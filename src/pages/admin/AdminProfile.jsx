@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from "react";
-import { Camera, Lock, Mail, User, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Lock, Mail, User, Eye, EyeOff } from "lucide-react";
 import axios from "axios";
 import { useAuth } from "../../context/AuthContext";
 
@@ -10,8 +10,9 @@ const api = axios.create({
 });
 
 const AdminProfile = () => {
-  const { authToken, userRole } = useAuth();
+  const { authToken, userRole, logout } = useAuth();
   const [adminData, setAdminData] = useState(null);
+  const [profileLoading, setProfileLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
@@ -27,23 +28,48 @@ const AdminProfile = () => {
 
   const [message, setMessage] = useState("");
 
-  useEffect(() => {
-    const fetchProfile = async () => {
-      if (!authToken || userRole !== "admin") return;
-
-      try {
-        const res = await api.get("/admin/me", {
-          headers: { Authorization: `Bearer ${authToken}` },
-        });
-        setAdminData(res.data);
-        setFormState((prev) => ({ ...prev, name: res.data.name }));
-      } catch (err) {
-        console.error("Failed to fetch admin profile:", err);
-        setMessage("Failed to load profile.");
+  const handleUnauthorizedError = useCallback(
+    (err, fallbackMessage = "Session expired. Please login again.") => {
+      const statusCode = err?.response?.status;
+      if (statusCode !== 401 && statusCode !== 403) {
+        return false;
       }
-    };
+      setMessage(err?.response?.data?.message || fallbackMessage);
+      logout();
+      return true;
+    },
+    [logout],
+  );
+
+  const fetchProfile = useCallback(async () => {
+    if (!authToken || userRole !== "admin") {
+      setProfileLoading(false);
+      return;
+    }
+
+    setProfileLoading(true);
+    try {
+      const res = await api.get("/admin/me", {
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+      setAdminData(res.data);
+      setFormState((prev) => ({ ...prev, name: res.data.name }));
+      setMessage("");
+    } catch (err) {
+      if (handleUnauthorizedError(err)) {
+        return;
+      }
+      console.error("Failed to fetch admin profile:", err);
+      setAdminData(null);
+      setMessage("Failed to load profile.");
+    } finally {
+      setProfileLoading(false);
+    }
+  }, [authToken, userRole, handleUnauthorizedError]);
+
+  useEffect(() => {
     fetchProfile();
-  }, [authToken, userRole]);
+  }, [fetchProfile]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -53,35 +79,42 @@ const AdminProfile = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
-    setLoading(true);
 
     const { name, currentPassword, newPassword, confirmNewPassword } =
       formState;
 
     if (!authToken || userRole !== "admin") {
       setMessage("Unauthorized access.");
-      setLoading(false);
       return;
     }
 
-    try {
-      if (currentPassword || newPassword || confirmNewPassword) {
-        if (!currentPassword || !newPassword || !confirmNewPassword) {
-          return setMessage("All password fields are required.");
-        }
-        if (newPassword.length < 6) {
-          return setMessage("New password must be at least 6 characters long.");
-        }
-        if (newPassword !== confirmNewPassword) {
-          return setMessage("New passwords do not match.");
-        }
+    const wantsPasswordChange =
+      Boolean(currentPassword) || Boolean(newPassword) || Boolean(confirmNewPassword);
 
+    if (wantsPasswordChange) {
+      if (!currentPassword || !newPassword || !confirmNewPassword) {
+        setMessage("All password fields are required.");
+        return;
+      }
+      if (newPassword.length < 6) {
+        setMessage("New password must be at least 6 characters long.");
+        return;
+      }
+      if (newPassword !== confirmNewPassword) {
+        setMessage("New passwords do not match.");
+        return;
+      }
+    }
+
+    setLoading(true);
+
+    try {
+      if (wantsPasswordChange) {
         await api.patch(
           "/admin/update-password",
           { currentPassword, newPassword },
           { headers: { Authorization: `Bearer ${authToken}` } },
         );
-        setMessage("✅ Password updated successfully.");
       }
 
       const res = await api.patch(
@@ -90,25 +123,49 @@ const AdminProfile = () => {
         { headers: { Authorization: `Bearer ${authToken}` } },
       );
       setAdminData(res.data);
-      setMessage("Profile updated successfully.");
-    } catch (err) {
-      console.error(err);
-      setMessage(err.response?.data?.message || "Failed to update profile.");
-    } finally {
-      setLoading(false);
+      setMessage(
+        wantsPasswordChange
+          ? "Password and profile updated successfully."
+          : "Profile updated successfully.",
+      );
+      setIsEditing(false);
       setFormState((prev) => ({
         ...prev,
         currentPassword: "",
         newPassword: "",
         confirmNewPassword: "",
       }));
-      setIsEditing(false);
+    } catch (err) {
+      if (handleUnauthorizedError(err)) {
+        return;
+      }
+      console.error(err);
+      setMessage(err.response?.data?.message || "Failed to update profile.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  if (!adminData) {
+  if (profileLoading) {
     return (
       <div className="text-center py-10 text-gray-500">Loading profile...</div>
+    );
+  }
+
+  if (!adminData) {
+    return (
+      <div className="mx-auto mt-10 max-w-xl rounded-xl border border-red-200 bg-red-50 p-6 text-center">
+        <p className="font-medium text-red-700">
+          {message || "Failed to load profile."}
+        </p>
+        <button
+          type="button"
+          onClick={fetchProfile}
+          className="mt-4 rounded-lg bg-orange-600 px-4 py-2 font-semibold text-white hover:bg-orange-700"
+        >
+          Retry
+        </button>
+      </div>
     );
   }
 
@@ -154,7 +211,7 @@ const AdminProfile = () => {
             value={formState.name}
             onChange={handleInputChange}
             required
-            disabled={!isEditing}
+            disabled={!isEditing || loading}
           />
         </div>
 
@@ -185,11 +242,13 @@ const AdminProfile = () => {
                   className="w-full border border-orange-200 rounded-lg p-2 pr-10"
                   value={formState.currentPassword}
                   onChange={handleInputChange}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowCurrentPassword((prev) => !prev)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                  disabled={loading}
                 >
                   {showCurrentPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -204,11 +263,13 @@ const AdminProfile = () => {
                   className="w-full border border-orange-200 rounded-lg p-2 pr-10"
                   value={formState.newPassword}
                   onChange={handleInputChange}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowNewPassword((prev) => !prev)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                  disabled={loading}
                 >
                   {showNewPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -223,11 +284,13 @@ const AdminProfile = () => {
                   className="w-full border border-orange-200 rounded-lg p-2 pr-10"
                   value={formState.confirmNewPassword}
                   onChange={handleInputChange}
+                  disabled={loading}
                 />
                 <button
                   type="button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-orange-600"
+                  disabled={loading}
                 >
                   {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
                 </button>
@@ -253,7 +316,9 @@ const AdminProfile = () => {
         {message && (
           <p
             className={`text-center mt-4 font-medium ${
-              message.startsWith("✅") ? "text-green-700" : "text-red-600"
+              message.toLowerCase().includes("success")
+                ? "text-green-700"
+                : "text-red-600"
             }`}
           >
             {message}

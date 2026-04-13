@@ -13,7 +13,11 @@ import {
 import { formatValue } from "../../utils/formatter.js";
 
 const AdminSalesLookup = () => {
-  const { loading: optionsLoading } = useContext(OptionsContext);
+  const {
+    loading: optionsLoading,
+    error: optionsError,
+    refetchOptions,
+  } = useContext(OptionsContext);
 
   const {
     records = [],
@@ -92,6 +96,21 @@ const AdminSalesLookup = () => {
     return (
       <div className="p-6 text-center text-orange-700 font-semibold">
         Loading filter options...
+      </div>
+    );
+  }
+
+  if (optionsError) {
+    return (
+      <div className="p-6 text-center">
+        <p className="font-semibold text-red-600">{optionsError}</p>
+        <button
+          type="button"
+          onClick={refetchOptions}
+          className="mt-3 rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white hover:bg-orange-600"
+        >
+          Retry
+        </button>
       </div>
     );
   }

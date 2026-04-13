@@ -5,6 +5,7 @@ const ExistingUserSearch = ({
   searchEmail,
   setSearchEmail,
   handleUserSearch,
+  isSearching = false,
   existingRecords,
   selectedRecord,
   setSelectedRecord,
@@ -56,6 +57,7 @@ const ExistingUserSearch = ({
           placeholder="Search by Email or Mobile"
           value={localSearchValue}
           onChange={handleSearchChange}
+          disabled={isSearching}
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();
@@ -67,9 +69,10 @@ const ExistingUserSearch = ({
         <button
           type="button"
           onClick={handleSearchClick}
+          disabled={isSearching}
           className="h-10 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 text-sm font-semibold text-white shadow-sm transition hover:from-orange-600 hover:to-amber-600"
         >
-          Search
+          {isSearching ? "Searching..." : "Search"}
         </button>
       </div>
 

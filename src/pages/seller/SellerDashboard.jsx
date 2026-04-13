@@ -95,7 +95,7 @@ const SellerDashboard = () => {
     () =>
       salesVsRefund.reduce((sum, row) => {
         const name = (row?.name || "").toString().toLowerCase();
-        return name.includes("refund") ? sum + toNumber(row?.value) : sum;
+        return name === "refunds" ? sum + toNumber(row?.value) : sum;
       }, 0),
     [salesVsRefund],
   );
@@ -104,7 +104,7 @@ const SellerDashboard = () => {
     () =>
       salesVsRefund.reduce((sum, row) => {
         const name = (row?.name || "").toString().toLowerCase();
-        return name.includes("sale") ? sum + toNumber(row?.value) : sum;
+        return name === "sales" ? sum + toNumber(row?.value) : sum;
       }, 0),
     [salesVsRefund],
   );

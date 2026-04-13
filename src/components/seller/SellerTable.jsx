@@ -1,7 +1,7 @@
 import React from "react";
 import { ChevronUp, ChevronDown } from "lucide-react";
 import SellerHistoryRecords from "./SellerHistoryRecords";
-import { gemFieldOrder } from "../../utils/gemsHierarchyUtils";
+import { gemFieldOrder } from "../../utils/utils";
 
 const SellerTable = ({
   headers,
@@ -25,10 +25,21 @@ const SellerTable = ({
   handleSave,
   handleCancelEdit,
   isSaveDisabled,
+  savingRecordId,
   formatValue,
   formatDate,
   showActions = true,
 }) => {
+  const multiSelectFields = new Set([
+    "service",
+    "handleBy",
+    "gems",
+    "gems1",
+    "gems2",
+    "gems3",
+    "gems4",
+  ]);
+
   const normalizeText = (value) => {
     if (Array.isArray(value)) {
       return value
@@ -50,6 +61,24 @@ const SellerTable = ({
       return option.value ?? option.name ?? option.label ?? "";
     }
     return option ?? "";
+  };
+
+  const getOptionLabel = (option) => {
+    if (option && typeof option === "object") {
+      return option.label ?? option.name ?? option.value ?? "";
+    }
+    return option ?? "";
+  };
+
+  const toArrayValue = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (item === undefined || item === null ? "" : String(item).trim()))
+        .filter(Boolean);
+    }
+
+    if (value === undefined || value === null || value === "") return [];
+    return [String(value).trim()].filter(Boolean);
   };
 
   const getSelectValue = (rawValue, options = []) => {
@@ -101,9 +130,50 @@ const SellerTable = ({
     return "";
   };
 
+  const getOptionsForField = (fieldKey) => {
+    if (fieldKey === "country") {
+      return (
+        dropdowns.country?.map((item) => ({
+          label: item.name,
+          value: item.name,
+        })) || []
+      );
+    }
+
+    if (gemFieldOrder.includes(fieldKey) || Array.isArray(dropdowns?.[fieldKey])) {
+      return (dropdowns[fieldKey] || []).map((option) => {
+        if (typeof option === "string") {
+          return { label: option, value: option };
+        }
+        return {
+          label: option.label ?? option.name ?? option.value ?? "",
+          value: option.value ?? option.name ?? option.label ?? "",
+        };
+      });
+    }
+
+    return [];
+  };
+
+  const getColumnMinWidth = (key, options = []) => {
+    const headerLength = String(headerLabels[key] || key).length;
+    const longestOptionLength = options.reduce((maxLength, option) => {
+      const text = String(getOptionLabel(option) || "");
+      return Math.max(maxLength, text.length);
+    }, 0);
+
+    const base = multiSelectFields.has(key) ? 18 : 10;
+    const fromOptions = longestOptionLength > 0
+      ? Math.min(44, Math.ceil(longestOptionLength * 0.8) + 8)
+      : 0;
+    const widthInCh = Math.max(base, headerLength + 4, fromOptions);
+
+    return { minWidth: `${widthInCh}ch` };
+  };
+
   return (
     <div className="records-scrollbar w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full divide-y divide-slate-200 text-sm">
+      <table className="min-w-max table-auto divide-y divide-slate-200 text-sm">
         {/* ================= HEADER ================= */}
         <thead className="sticky top-0 z-10 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
           <tr>
@@ -117,17 +187,21 @@ const SellerTable = ({
               History
             </th>
 
-            {headers.map((key, index) => (
-              <th
-                key={key || `header-${index}`}
-                className="whitespace-nowrap border border-slate-200 px-4 py-3 text-center font-semibold text-orange-900"
-              >
-                {headerLabels[key] || key}
-                {requiredFields.includes(key) && (
-                  <span className="text-red-600 ml-1">*</span>
-                )}
-              </th>
-            ))}
+            {headers.map((key, index) => {
+              const headerOptions = getOptionsForField(key);
+              return (
+                <th
+                  key={key || `header-${index}`}
+                  className="whitespace-nowrap border border-slate-200 px-4 py-3 text-center font-semibold text-orange-900"
+                  style={getColumnMinWidth(key, headerOptions)}
+                >
+                  {headerLabels[key] || key}
+                  {requiredFields.includes(key) && (
+                    <span className="text-red-600 ml-1">*</span>
+                  )}
+                </th>
+              );
+            })}
 
           </tr>
         </thead>
@@ -138,6 +212,7 @@ const SellerTable = ({
             paginatedRecords.map((record) => {
               const isEditing = editingId === record._id;
               const isHistoryExpanded = expandedHistoryId === record._id;
+              const isSavingThisRow = savingRecordId === record._id;
 
               const categoryValues = normalizeText(record.category)
                 .split(",")
@@ -162,17 +237,18 @@ const SellerTable = ({
                           <div className="flex items-center justify-center gap-2">
                             <button
                               onClick={() => handleSave(record._id)}
-                              disabled={isSaveDisabled()}
+                              disabled={isSaveDisabled() || isSavingThisRow}
                               className={`rounded px-3 py-1 text-sm font-medium ${
-                                isSaveDisabled()
+                                isSaveDisabled() || isSavingThisRow
                                   ? "text-gray-400 cursor-not-allowed"
                                   : "text-emerald-600 hover:bg-emerald-50"
                               }`}
                             >
-                              Save
+                              {isSavingThisRow ? "Saving..." : "Save"}
                             </button>
                             <button
                               onClick={handleCancelEdit}
+                              disabled={isSavingThisRow}
                               className="rounded px-3 py-1 text-sm font-medium text-slate-600 hover:bg-slate-100"
                             >
                               Cancel
@@ -224,6 +300,9 @@ const SellerTable = ({
                         key === "dateOfPayment"
                           ? toDateInputValue(rawValue)
                           : value;
+                      const isMultiSelectField = multiSelectFields.has(key);
+                      const selectedMultiValues = toArrayValue(rawValue);
+                      const selectedMultiValueSet = new Set(selectedMultiValues);
 
                       return (
                         <td
@@ -231,6 +310,7 @@ const SellerTable = ({
                           className={`whitespace-nowrap border border-slate-100 px-3 py-2 ${
                             hasError ? "bg-red-50" : ""
                           }`}
+                          style={getColumnMinWidth(key, getOptionsForField(key))}
                         >
                           {isEditing && !nonEditableFields.includes(key) ? (
                             key === "country" ? (
@@ -284,40 +364,104 @@ const SellerTable = ({
                                 );
                               })()
                             ) : gemFieldOrder.includes(key) || Array.isArray(dropdowns?.[key]) ? (
-                              <select
-                                value={getSelectValue(rawValue, dropdowns[key] || [])}
-                                onChange={(e) =>
-                                  handleChange(key, e.target.value)
-                                }
-                                className={`w-full rounded-lg border p-1 text-xs ${
-                                  hasError
-                                    ? "border-red-500 bg-red-50"
-                                    : "border-orange-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
-                                }`}
-                              >
-                                <option value="">
-                                  Select {headerLabels[key] || key}
-                                </option>
-                                {(dropdowns[key] || []).map((option, idx) => {
-                                  const val =
-                                    typeof option === "string"
-                                      ? option
-                                      : option.value;
-                                  const label =
-                                    typeof option === "string"
-                                      ? option
-                                      : option.label;
+                              isMultiSelectField ? (
+                                <div className="space-y-1.5 text-left">
+                                  <div className="flex min-h-8 flex-wrap gap-1">
+                                    {selectedMultiValues.length > 0 ? (
+                                      selectedMultiValues.map((selectedValue) => (
+                                        <button
+                                          key={`${key}-${selectedValue}`}
+                                          type="button"
+                                          onClick={() =>
+                                            handleChange(
+                                              key,
+                                              selectedMultiValues.filter((item) => item !== selectedValue),
+                                            )
+                                          }
+                                          className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-800 hover:bg-orange-100"
+                                          title={`Remove ${selectedValue}`}
+                                        >
+                                          <span>{selectedValue}</span>
+                                          <span className="text-[10px] leading-none">x</span>
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-slate-400">No selection</span>
+                                    )}
+                                  </div>
 
-                                  return (
-                                    <option
-                                      key={`${key}-${val}-${idx}`}
-                                      value={val}
-                                    >
-                                      {label}
-                                    </option>
-                                  );
-                                })}
-                              </select>
+                                  <select
+                                    value=""
+                                    onChange={(e) => {
+                                      const selectedValue = e.target.value;
+                                      if (!selectedValue) return;
+                                      if (selectedMultiValueSet.has(selectedValue)) return;
+                                      handleChange(key, [...selectedMultiValues, selectedValue]);
+                                    }}
+                                    className={`w-full rounded-lg border p-1 text-xs ${
+                                      hasError
+                                        ? "border-red-500 bg-red-50"
+                                        : "border-orange-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                                    }`}
+                                  >
+                                    <option value="">Add {headerLabels[key] || key}</option>
+                                    {(dropdowns[key] || []).map((option, idx) => {
+                                      const val =
+                                        typeof option === "string"
+                                          ? option
+                                          : option.value;
+                                      const label =
+                                        typeof option === "string"
+                                          ? option
+                                          : option.label;
+                                      if (selectedMultiValueSet.has(val)) return null;
+                                      return (
+                                        <option
+                                          key={`${key}-${val}-${idx}`}
+                                          value={val}
+                                        >
+                                          {label}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              ) : (
+                                <select
+                                  value={getSelectValue(rawValue, dropdowns[key] || [])}
+                                  onChange={(e) =>
+                                    handleChange(key, e.target.value)
+                                  }
+                                  className={`w-full rounded-lg border p-1 text-xs ${
+                                    hasError
+                                      ? "border-red-500 bg-red-50"
+                                      : "border-orange-200 focus:border-orange-400 focus:ring-2 focus:ring-orange-100"
+                                  }`}
+                                >
+                                  <option value="">
+                                    Select {headerLabels[key] || key}
+                                  </option>
+                                  {(dropdowns[key] || []).map((option, idx) => {
+                                    const val =
+                                      typeof option === "string"
+                                        ? option
+                                        : option.value;
+                                    const label =
+                                      typeof option === "string"
+                                        ? option
+                                        : option.label;
+
+                                    return (
+                                      <option
+                                        key={`${key}-${val}-${idx}`}
+                                        value={val}
+                                      >
+                                        {label}
+                                      </option>
+                                    );
+                                  })}
+                                </select>
+                              )
                             ) : (
                               <input
                                 type={key === "dateOfPayment" ? "date" : "text"}
@@ -350,6 +494,7 @@ const SellerTable = ({
                       history={recordHistory[record._id]}
                       loading={loadingHistory[record._id]}
                       formatDate={formatDate}
+                      showActions={showActions}
                     />
                   )}
                 </React.Fragment>

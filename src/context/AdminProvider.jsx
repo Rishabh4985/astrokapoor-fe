@@ -14,7 +14,7 @@ const toYmdUtc = (date) => {
 };
 
 const AdminProvider = ({ children }) => {
-  const { authToken, userRole } = useAuth();
+  const { authToken, userRole, logout } = useAuth();
   const [error, setError] = useState(null);
 
   // Records state
@@ -28,6 +28,12 @@ const AdminProvider = ({ children }) => {
   const limit = 100;
 
   const isMountedRef = useRef(true);
+  const latestRecordsRequestIdRef = useRef(0);
+  const latestChartRequestIdRef = useRef({
+    "monthly-sales": 0,
+    "sales-vs-refund": 0,
+    "status-count": 0,
+  });
   useEffect(() => {
     isMountedRef.current = true;
     return () => {
@@ -80,10 +86,30 @@ const AdminProvider = ({ children }) => {
     });
   }, []);
 
+  const handleUnauthorizedError = useCallback(
+    (err, fallbackMessage = "Session expired. Please login again.") => {
+      const statusCode = err?.response?.status;
+      if (statusCode !== 401 && statusCode !== 403) {
+        return false;
+      }
+
+      if (isMountedRef.current) {
+        setError(err?.response?.data?.message || fallbackMessage);
+      }
+
+      logout();
+      return true;
+    },
+    [logout],
+  );
+
   // Fetch records with filters + pagination
   const fetchRecords = useCallback(
     async (pageNumber = 1, appliedFilters = {}) => {
       if (!authToken) return;
+      const requestId = latestRecordsRequestIdRef.current + 1;
+      latestRecordsRequestIdRef.current = requestId;
+
       try {
         setLoading(true);
         setError(null);
@@ -102,21 +128,27 @@ const AdminProvider = ({ children }) => {
           ? res.data.records.map(cleanRecord)
           : [];
 
-        if (!isMountedRef.current) return;
+        if (!isMountedRef.current || requestId !== latestRecordsRequestIdRef.current) return;
 
         setRecords(cleaned);
         setPage(res.data.page || pageNumber);
         setTotalPages(res.data.totalPages || 1);
         setTotalRecords(res.data.totalRecords || cleaned.length);
       } catch (err) {
+        if (!isMountedRef.current || requestId !== latestRecordsRequestIdRef.current) return;
+        if (handleUnauthorizedError(err)) return;
         console.error("Failed to fetch records", err);
-        if (isMountedRef.current)
-          setError(err.response?.data?.message || "Failed to fetch records");
+        setError(err.response?.data?.message || "Failed to fetch records");
       } finally {
-        if (isMountedRef.current) setLoading(false);
+        if (
+          isMountedRef.current &&
+          requestId === latestRecordsRequestIdRef.current
+        ) {
+          setLoading(false);
+        }
       }
     },
-    [authToken, limit, cleanRecord, appendFilterParams],
+    [authToken, limit, cleanRecord, appendFilterParams, handleUnauthorizedError],
   );
 
   const fetchAllRecordsForExport = useCallback(
@@ -155,21 +187,33 @@ const AdminProvider = ({ children }) => {
 
         return allRecords;
       } catch (err) {
+        if (handleUnauthorizedError(err)) {
+          throw new Error("Session expired. Please login again.");
+        }
         console.error("Failed to fetch all records for export", err);
         throw new Error(
           err.response?.data?.message || "Failed to fetch records for export",
         );
       }
     },
-    [authToken, cleanRecord, filters, appendFilterParams],
+    [authToken, cleanRecord, filters, appendFilterParams, handleUnauthorizedError],
   );
 
   // Trigger fetch when filters or page changes
   const filtersString = JSON.stringify(filters);
+  const lastAppliedFiltersRef = useRef(filtersString);
 
   useEffect(() => {
     if (!authToken) return;
 
+    const filtersChanged = lastAppliedFiltersRef.current !== filtersString;
+    if (filtersChanged && page !== 1) {
+      lastAppliedFiltersRef.current = filtersString;
+      setPage(1);
+      return;
+    }
+
+    lastAppliedFiltersRef.current = filtersString;
     const parsedFilters = JSON.parse(filtersString);
     fetchRecords(page, parsedFilters);
   }, [page, authToken, fetchRecords, filtersString]);
@@ -187,18 +231,22 @@ const AdminProvider = ({ children }) => {
   const importRecords = useCallback(async () => {
     try {
       setError(null);
-      setPage(1);
+      if (page !== 1) {
+        setPage(1);
+        return { success: true };
+      }
+
       await fetchRecords(1, filters);
       return { success: true };
     } catch (err) {
       console.error("Import refresh failed", err);
       return { success: false };
     }
-  }, [fetchRecords, filters]);
+  }, [fetchRecords, filters, page]);
 
   const addRecord = useCallback(
     async (newRecord) => {
-      if (!authToken) return;
+      if (!authToken) return false;
       try {
         setError(null);
         const normalize = (val) => val?.toString().toLowerCase().trim();
@@ -216,19 +264,23 @@ const AdminProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
-        const saved = res.data.record || res.data;
-        setRecords((prev) => [...prev, cleanRecord(saved)]);
+        if (res?.data) {
+          await fetchRecords(page, filters);
+        }
+        return true;
       } catch (err) {
+        if (handleUnauthorizedError(err)) return false;
         console.error("Failed to add record", err);
         setError("Failed to add record. Please try again.");
+        return false;
       }
     },
-    [authToken, cleanRecord],
+    [authToken, fetchRecords, page, filters, handleUnauthorizedError],
   );
 
   const updateRecord = useCallback(
     async (id, partialUpdate) => {
-      if (!authToken) return;
+      if (!authToken) return false;
       try {
         setError(null);
 
@@ -258,19 +310,21 @@ const AdminProvider = ({ children }) => {
           },
         );
 
-        const updated = cleanRecord(res.data.record || res.data);
-        setRecords((prev) =>
-          prev.map((r) => (r._id === updated._id ? updated : r)),
-        );
+        if (res?.data) {
+          await fetchRecords(page, filters);
+        }
+        return true;
       } catch (err) {
+        if (handleUnauthorizedError(err)) return false;
         console.error("Failed to update record", err);
         setError(
           err.response?.data?.message ||
             "Failed to update record. Please try again.",
         );
+        return false;
       }
     },
-    [authToken, cleanRecord],
+    [authToken, fetchRecords, page, filters, handleUnauthorizedError],
   );
 
   const getRecordById = useCallback(
@@ -282,38 +336,37 @@ const AdminProvider = ({ children }) => {
           headers: { Authorization: `Bearer ${authToken}` },
         });
 
-        const record = cleanRecord(res.data.record || res.data);
-        setRecords((prev) =>
-          prev.some((r) => r._id === record._id)
-            ? prev.map((r) => (r._id === record._id ? record : r))
-            : [...prev, record],
-        );
-        return record;
+        return cleanRecord(res.data.record || res.data);
       } catch (err) {
+        if (handleUnauthorizedError(err)) return null;
         console.error("Failed to fetch record by ID", err);
         setError(err.response?.data?.message || "Failed to fetch record.");
         return null;
       }
     },
-    [authToken, cleanRecord],
+    [authToken, cleanRecord, handleUnauthorizedError],
   );
 
   const deleteRecord = useCallback(
     async (id) => {
-      if (!authToken) return;
+      if (!authToken) return false;
       try {
         setError(null);
         await axios.delete(`${API_BASE}/records/${id}`, {
           headers: { Authorization: `Bearer ${authToken}` },
         });
-        setRecords((prev) => prev.filter((r) => r._id !== id));
-        setTotalRecords((prev) => Math.max(prev - 1, 0));
+
+        const targetPage = records.length === 1 && page > 1 ? page - 1 : page;
+        await fetchRecords(targetPage, filters);
+        return true;
       } catch (err) {
+        if (handleUnauthorizedError(err)) return false;
         console.error("Failed to delete record", err);
         setError(err.response?.data?.message || "Failed to delete record.");
+        return false;
       }
     },
-    [authToken],
+    [authToken, fetchRecords, filters, page, records.length, handleUnauthorizedError],
   );
 
   const clearError = useCallback(() => setError(null), []);
@@ -343,6 +396,11 @@ const AdminProvider = ({ children }) => {
   const fetchChartData = useCallback(
     async (chartType) => {
       if (!authToken || userRole !== "admin") return [];
+      const requestId = (latestChartRequestIdRef.current[chartType] || 0) + 1;
+      latestChartRequestIdRef.current[chartType] = requestId;
+      const isStaleRequest = () =>
+        !isMountedRef.current ||
+        latestChartRequestIdRef.current[chartType] !== requestId;
 
       try {
         setChartData((prev) => ({
@@ -351,28 +409,7 @@ const AdminProvider = ({ children }) => {
         }));
 
         const params = new URLSearchParams();
-
-        // Only include filters with meaningful values
-        const validFilters = Object.entries(filters).filter(
-          ([, value]) =>
-            value !== "" &&
-            value !== "all" &&
-            value !== null &&
-            value !== undefined,
-        );
-
-        // If no valid filters, skip adding query params (prevents empty fetch issues)
-        validFilters.forEach(([key, value]) => {
-          if (Array.isArray(value)) {
-            value
-              .map((item) => item?.toString().trim())
-              .filter(Boolean)
-              .forEach((item) => params.append(key, item));
-            return;
-          }
-
-          params.append(key, value.toString().trim());
-        });
+        appendFilterParams(params, filters);
 
         const queryString = params.toString();
         const url = queryString
@@ -384,6 +421,7 @@ const AdminProvider = ({ children }) => {
         });
 
         const data = Array.isArray(res.data) ? res.data : res.data?.data || [];
+        if (isStaleRequest()) return [];
 
         setChartData((prev) => ({
           ...prev,
@@ -391,11 +429,25 @@ const AdminProvider = ({ children }) => {
             data,
             loading: false,
             error: null,
+            lastFetched: Date.now(),
           },
         }));
 
         return data;
       } catch (err) {
+        if (isStaleRequest()) return [];
+
+        if (handleUnauthorizedError(err)) {
+          setChartData((prev) => ({
+            ...prev,
+            [chartType]: {
+              ...prev[chartType],
+              loading: false,
+              error: "Session expired. Please login again.",
+            },
+          }));
+          return [];
+        }
         console.error(`Failed to fetch ${chartType}`, err);
 
         setChartData((prev) => ({
@@ -410,7 +462,7 @@ const AdminProvider = ({ children }) => {
         return [];
       }
     },
-    [authToken, userRole, filters],
+    [authToken, userRole, filters, appendFilterParams, handleUnauthorizedError],
   );
 
   const fetchMonthlySalesData = useCallback(
@@ -461,25 +513,6 @@ const AdminProvider = ({ children }) => {
     fetchMonthlySalesData();
     fetchSalesVsRefundData();
     fetchStatusData();
-  }, [
-    filters,
-    authToken,
-    userRole,
-    fetchMonthlySalesData,
-    fetchSalesVsRefundData,
-    fetchStatusData,
-  ]);
-
-  useEffect(() => {
-    if (
-      authToken &&
-      userRole === "admin" &&
-      Object.values(filters).some((v) => v)
-    ) {
-      fetchMonthlySalesData();
-      fetchSalesVsRefundData();
-      fetchStatusData();
-    }
   }, [
     filters,
     authToken,

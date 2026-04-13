@@ -13,8 +13,8 @@ const SalesVsRefundChart = ({ data = [], loading = false }) => {
       (acc, item) => {
         const key = (item?.name || "").toString().toLowerCase();
         const value = Number(item?.value) || 0;
-        if (key.includes("refund")) acc.refunds += value;
-        else acc.sales += value;
+        if (key === "refunds") acc.refunds += value;
+        if (key === "sales") acc.sales += value;
         return acc;
       },
       { sales: 0, refunds: 0 },

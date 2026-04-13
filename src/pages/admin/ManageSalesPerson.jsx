@@ -5,7 +5,7 @@ import { UserPlus, List, Trash2, Pencil, Loader2, Eye, EyeOff } from "lucide-rea
 import { useAuth } from "../../context/AuthContext";
 
 const ManageSalesPerson = () => {
-  const { authToken, userRole } = useAuth();
+  const { authToken, userRole, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("add");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -14,11 +14,26 @@ const ManageSalesPerson = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [salespersons, setSalespersons] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isAdding, setIsAdding] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [editPassword, setEditPassword] = useState("");
   const [showEditPassword, setShowEditPassword] = useState(false);
 
   const API_BASE = import.meta.env.VITE_API_URL;
+
+  const handleUnauthorizedError = useCallback(
+    (err, fallbackMessage = "Session expired. Please login again.") => {
+      const statusCode = err?.response?.status;
+      if (statusCode !== 401 && statusCode !== 403) {
+        return false;
+      }
+
+      toast.error(err?.response?.data?.message || fallbackMessage);
+      logout();
+      return true;
+    },
+    [logout],
+  );
 
   const fetchSalespersons = useCallback(async () => {
     if (!authToken || userRole !== "admin") return;
@@ -37,18 +52,23 @@ const ManageSalesPerson = () => {
         toast.error("Unexpected response format for salespersons.");
       }
     } catch (error) {
+      if (handleUnauthorizedError(error)) {
+        return;
+      }
       toast.error("Failed to fetch salespersons");
       console.error(error);
     } finally {
       setLoading(false);
     }
-  }, [authToken, userRole, API_BASE]);
+  }, [authToken, userRole, API_BASE, handleUnauthorizedError]);
 
   useEffect(() => {
     fetchSalespersons();
   }, [fetchSalespersons]);
 
   const handleAdd = async () => {
+    if (isAdding) return;
+
     if (!firstName || !email || !password) {
       return toast.error("All fields are required.");
     }
@@ -65,6 +85,7 @@ const ManageSalesPerson = () => {
     };
 
     try {
+      setIsAdding(true);
       await axios.post(`${API_BASE}/admin/sellers`, payload, {
         headers: { Authorization: `Bearer ${authToken}` },
       });
@@ -77,7 +98,12 @@ const ManageSalesPerson = () => {
       fetchSalespersons();
       setActiveTab("list");
     } catch (err) {
+      if (handleUnauthorizedError(err)) {
+        return;
+      }
       toast.error(err?.response?.data?.message || "Error adding salesperson");
+    } finally {
+      setIsAdding(false);
     }
   };
 
@@ -91,7 +117,10 @@ const ManageSalesPerson = () => {
       });
       toast.success("Salesperson deleted.");
       fetchSalespersons();
-    } catch {
+    } catch (err) {
+      if (handleUnauthorizedError(err)) {
+        return;
+      }
       toast.error("Failed to delete salesperson.");
     }
   };
@@ -127,6 +156,9 @@ const ManageSalesPerson = () => {
       setShowEditPassword(false);
       fetchSalespersons();
     } catch (err) {
+      if (handleUnauthorizedError(err)) {
+        return;
+      }
       const errorMsg = err?.response?.data?.message || "Failed to update password.";
       toast.error(errorMsg);
     }
@@ -239,9 +271,14 @@ const ManageSalesPerson = () => {
 
             <button
               onClick={handleAdd}
-              className="w-full bg-orange-600 text-white py-2 rounded-lg hover:bg-orange-700 transition font-medium"
+              disabled={isAdding}
+              className={`w-full py-2 rounded-lg transition font-medium ${
+                isAdding
+                  ? "bg-gray-400 cursor-not-allowed text-gray-100"
+                  : "bg-orange-600 text-white hover:bg-orange-700"
+              }`}
             >
-              Save Salesperson
+              {isAdding ? "Saving..." : "Save Salesperson"}
             </button>
           </div>
         </div>

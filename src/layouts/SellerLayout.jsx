@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Outlet } from "react-router-dom";
 import SellerNavbar from "../components/seller/SellerNavbar";
 import SellerSidebar from "../components/seller/SellerSidebar";
-import SellerProvider from "../context/SellerProvider";
 
 //seller layout
 const SellerLayout = () => {
@@ -33,7 +32,6 @@ const SellerLayout = () => {
   };
 
   return (
-    <SellerProvider>
       <div className="flex min-h-screen bg-slate-100">
         {isMobile && isSidebarOpen && (
           <div
@@ -70,7 +68,6 @@ const SellerLayout = () => {
           </main>
         </div>
       </div>
-    </SellerProvider>
   );
 };
 

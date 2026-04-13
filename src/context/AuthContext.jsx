@@ -1,16 +1,16 @@
-import { createContext, useContext, useState, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+  useMemo,
+} from "react";
+import { jwtDecode } from "jwt-decode";
 
 const safeStorage = {
   getItem: (key) => {
     try {
-      // Check sessionStorage first for auth tokens
-      if (key === "sessionAuthToken" || key === "sessionUserRole") {
-        const item = sessionStorage.getItem(key);
-        if (!item) return null;
-        return item;
-      }
-      
-      // Fall back to localStorage for persistent data
       const item = localStorage.getItem(key);
       if (!item) return null;
       try {
@@ -49,41 +49,124 @@ const safeStorage = {
   },
 };
 
-const defaultContextValue = {
-  userRole: null,
-  authToken: null,
-  currentSeller: null,
-  setCurrentSeller: () => {},
-  login: () => {},
-  logout: () => {},
-  isAuthenticated: false,
+const safeSessionStorage = {
+  getItem: (key) => {
+    try {
+      return sessionStorage.getItem(key);
+    } catch (error) {
+      console.warn(`Failed to get sessionStorage item ${key}:`, error);
+      return null;
+    }
+  },
+  setItem: (key, value) => {
+    try {
+      sessionStorage.setItem(key, value);
+    } catch (error) {
+      console.warn(`Failed to save to sessionStorage ${key}:`, error);
+    }
+  },
+  removeItem: (key) => {
+    try {
+      sessionStorage.removeItem(key);
+    } catch (error) {
+      console.warn(`Failed to remove sessionStorage item ${key}:`, error);
+    }
+  },
+};
+
+const AUTH_LOCAL_KEYS = [
+  "userRole",
+  "authToken",
+  "currentSeller",
+  "isAdminLoggedIn",
+  "isSellerLoggedIn",
+  "userList",
+  "user",
+];
+const AUTH_SESSION_KEYS = ["sessionAuthToken", "sessionUserRole"];
+
+const clearStoredAuthData = () => {
+  AUTH_LOCAL_KEYS.forEach((key) => safeStorage.removeItem(key));
+  AUTH_SESSION_KEYS.forEach((key) => safeSessionStorage.removeItem(key));
+};
+
+const getTokenExpiryMs = (token) => {
+  try {
+    const decoded = jwtDecode(token);
+    if (!decoded || typeof decoded.exp !== "number") return null;
+    return decoded.exp * 1000;
+  } catch {
+    return null;
+  }
+};
+
+const isTokenExpired = (token) => {
+  if (!token || typeof token !== "string") return true;
+  const expiryMs = getTokenExpiryMs(token);
+  if (!expiryMs) return true;
+  return Date.now() >= expiryMs;
+};
+
+const normalizeSellerData = (sellerData) => {
+  if (!sellerData || typeof sellerData !== "object") return null;
+  return {
+    ...sellerData,
+    email: sellerData.email?.toLowerCase?.().trim() || "",
+  };
 };
 
 /* eslint-disable react-refresh/only-export-components */
-export const AuthContext = createContext(defaultContextValue);
+export const AuthContext = createContext(undefined);
 AuthContext.displayName = "AuthContext";
 
 export const AuthProvider = ({ children }) => {
-  const [userRole, setUserRole] = useState(() => {
-    const sessionRole = sessionStorage.getItem("sessionUserRole");
-    if (sessionRole) return sessionRole;
-    const role = safeStorage.getItem("userRole");
-    return role && typeof role === "string" ? role : null;
+  const [authState, setAuthState] = useState(() => {
+    const roleFromSession = safeSessionStorage.getItem("sessionUserRole");
+    const tokenFromSession = safeSessionStorage.getItem("sessionAuthToken");
+
+    const roleFromLocal = safeStorage.getItem("userRole");
+    const tokenFromLocal = safeStorage.getItem("authToken");
+    const storedSeller = safeStorage.getItem("currentSeller");
+
+    const userRole =
+      typeof roleFromSession === "string"
+        ? roleFromSession
+        : typeof roleFromLocal === "string"
+          ? roleFromLocal
+          : null;
+
+    const authToken =
+      typeof tokenFromSession === "string"
+        ? tokenFromSession
+        : typeof tokenFromLocal === "string"
+          ? tokenFromLocal
+          : null;
+
+    if (!userRole || !authToken || isTokenExpired(authToken)) {
+      clearStoredAuthData();
+      return {
+        userRole: null,
+        authToken: null,
+        currentSeller: null,
+      };
+    }
+
+    return {
+      userRole,
+      authToken,
+      currentSeller:
+        userRole === "seller" && storedSeller && typeof storedSeller === "object"
+          ? storedSeller
+          : null,
+    };
   });
 
-  const [authToken, setAuthToken] = useState(() => {
-    const sessionToken = sessionStorage.getItem("sessionAuthToken");
-    if (sessionToken) return sessionToken;
-    const token = safeStorage.getItem("authToken");
-    return token && typeof token === "string" ? token : null;
-  });
+  const { userRole, authToken, currentSeller } = authState;
 
-  const [currentSeller, setCurrentSeller] = useState(() => {
-    const seller = safeStorage.getItem("currentSeller");
-    return seller && typeof seller === "object" ? seller : null;
-  });
-
-  const isAuthenticated = !!(userRole && authToken);
+  const isAuthenticated = useMemo(
+    () => Boolean(userRole && authToken && !isTokenExpired(authToken)),
+    [userRole, authToken],
+  );
 
   const login = useCallback((role, token, sellerData = null) => {
     try {
@@ -92,29 +175,37 @@ export const AuthProvider = ({ children }) => {
         return false;
       }
 
-      setUserRole(role);
-      setAuthToken(token);
+      if (isTokenExpired(token)) {
+        console.error("Login failed: Token is expired or invalid");
+        return false;
+      }
+
+      const normalizedSeller = role === "seller" ? normalizeSellerData(sellerData) : null;
+
+      setAuthState({
+        userRole: role,
+        authToken: token,
+        currentSeller: normalizedSeller,
+      });
 
       // Store in sessionStorage for tab isolation
-      sessionStorage.setItem("sessionAuthToken", token);
-      sessionStorage.setItem("sessionUserRole", role);
-      
+      safeSessionStorage.setItem("sessionAuthToken", token);
+      safeSessionStorage.setItem("sessionUserRole", role);
+
       // Store in localStorage for persistence
       safeStorage.setItem("userRole", role);
       safeStorage.setItem("authToken", token);
 
-      if (role === "seller" && sellerData) {
-        const normalizedSeller = {
-          ...sellerData,
-          email: sellerData.email?.toLowerCase?.().trim() || "",
-        };
-        setCurrentSeller(normalizedSeller);
+      if (role === "seller" && normalizedSeller) {
         safeStorage.setItem("currentSeller", normalizedSeller);
         safeStorage.setItem("isSellerLoggedIn", "true");
+        safeStorage.removeItem("isAdminLoggedIn");
       }
 
       if (role === "admin") {
         safeStorage.setItem("isAdminLoggedIn", "true");
+        safeStorage.removeItem("isSellerLoggedIn");
+        safeStorage.removeItem("currentSeller");
       }
 
       return true;
@@ -126,34 +217,55 @@ export const AuthProvider = ({ children }) => {
 
   const logout = useCallback(() => {
     try {
-      setUserRole(null);
-      setAuthToken(null);
-      setCurrentSeller(null);
-
-      // Clear sessionStorage for current tab session
-      sessionStorage.removeItem("sessionAuthToken");
-      sessionStorage.removeItem("sessionUserRole");
-
-      // Clear localStorage
-      const keysToRemove = [
-        "userRole",
-        "authToken",
-        "currentSeller",
-        "isAdminLoggedIn",
-        "isSellerLoggedIn",
-        "userList",
-      ];
-      keysToRemove.forEach((key) => safeStorage.removeItem(key));
+      setAuthState({
+        userRole: null,
+        authToken: null,
+        currentSeller: null,
+      });
+      clearStoredAuthData();
     } catch (error) {
       console.error("Logout failed:", error);
     }
   }, []);
 
+  useEffect(() => {
+    if (!authToken) return;
+
+    if (isTokenExpired(authToken)) {
+      logout();
+      return;
+    }
+
+    const expiryMs = getTokenExpiryMs(authToken);
+    if (!expiryMs) {
+      logout();
+      return;
+    }
+
+    const msUntilExpiry = expiryMs - Date.now();
+    if (msUntilExpiry <= 0) {
+      logout();
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      logout();
+    }, msUntilExpiry);
+
+    return () => {
+      clearTimeout(timeoutId);
+    };
+  }, [authToken, logout]);
+
   const setCurrentSellerSafe = useCallback((seller) => {
     try {
       if (seller && typeof seller === "object") {
-        setCurrentSeller(seller);
-        safeStorage.setItem("currentSeller", seller);
+        const normalizedSeller = normalizeSellerData(seller);
+        setAuthState((prev) => ({
+          ...prev,
+          currentSeller: normalizedSeller,
+        }));
+        safeStorage.setItem("currentSeller", normalizedSeller);
       }
     } catch (error) {
       console.error("Failed to set current seller:", error);
@@ -163,20 +275,33 @@ export const AuthProvider = ({ children }) => {
   const isAdmin = userRole === "admin";
   const isSeller = userRole === "seller";
 
+  const contextValue = useMemo(
+    () => ({
+      userRole,
+      authToken,
+      currentSeller,
+      setCurrentSeller: setCurrentSellerSafe,
+      login,
+      logout,
+      isAuthenticated,
+      isSeller,
+      isAdmin,
+    }),
+    [
+      userRole,
+      authToken,
+      currentSeller,
+      setCurrentSellerSafe,
+      login,
+      logout,
+      isAuthenticated,
+      isSeller,
+      isAdmin,
+    ],
+  );
+
   return (
-    <AuthContext.Provider
-      value={{
-        userRole,
-        authToken,
-        currentSeller,
-        setCurrentSeller: setCurrentSellerSafe,
-        login,
-        logout,
-        isAuthenticated,
-        isSeller,
-        isAdmin,
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );

@@ -6,8 +6,8 @@ import { PlusCircle, UserPlus2, ClipboardEdit } from "lucide-react";
 const AdminAddRecord = () => {
   const { addRecord } = useContext(AdminContext);
 
-  const handleAddRecord = (newRecord) => {
-    addRecord(newRecord);
+  const handleAddRecord = async (newRecord) => {
+    return addRecord(newRecord);
   };
 
   return (

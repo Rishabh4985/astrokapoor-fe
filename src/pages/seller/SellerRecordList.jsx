@@ -15,6 +15,7 @@ import OptionsContext from "../../context/OptionsContext.jsx";
 import SellerPagination from "../../components/seller/SellerPagination.jsx";
 import SellerTable from "../../components/seller/SellerTable.jsx";
 import { formatValue, formatDate } from "../../utils/formatter.js";
+import { useAuth } from "../../context/AuthContext";
 
 const SellerRecordList = () => {
   const {
@@ -41,10 +42,14 @@ const SellerRecordList = () => {
   const [recordHistory, setRecordHistory] = useState({});
   const [loadingHistory, setLoadingHistory] = useState({});
   const [showActionsColumn, setShowActionsColumn] = useState(true);
+  const [savingRecordId, setSavingRecordId] = useState(null);
   const itemsPerPage = 100;
+  const { currentSeller } = useAuth();
 
-  const currentSeller = JSON.parse(localStorage.getItem("currentSeller"));
-  const sellerEmail = currentSeller?.email?.toLowerCase().trim();
+  const sellerEmail = useMemo(
+    () => currentSeller?.email?.toLowerCase?.().trim() || "",
+    [currentSeller],
+  );
   const getCategoryTokens = (value) => {
     const flatten = (input) => {
       if (Array.isArray(input)) {
@@ -167,6 +172,8 @@ const SellerRecordList = () => {
   };
 
   const handleSave = async (recordId) => {
+    if (savingRecordId === recordId) return;
+
     const recordToSave = sellerRecords.find((r) => r._id === recordId);
     if (!recordToSave || !recordToSave._id) {
       toast.error("Record data is incomplete. Please reload and try again.");
@@ -197,6 +204,7 @@ const SellerRecordList = () => {
       }
     }
 
+    setSavingRecordId(recordId);
     try {
       const payload = { _id: recordToSave._id };
       Object.keys(editedRecord).forEach((k) => {
@@ -207,14 +215,16 @@ const SellerRecordList = () => {
       await updateSellerRecord(payload);
 
       toast.success("Record updated successfully!");
+      setEditingId(null);
+      setEditedRecord({});
+      setValidationErrors({});
     } catch (error) {
       const errorMsg =
         error?.message || "Failed to update record. Please try again.";
       toast.error(errorMsg);
+    } finally {
+      setSavingRecordId((current) => (current === recordId ? null : current));
     }
-
-    setEditingId(null);
-    setEditedRecord({});
   };
 
   const handleCancelEdit = () => {
@@ -334,6 +344,7 @@ const SellerRecordList = () => {
               handleSave={handleSave}
               handleCancelEdit={handleCancelEdit}
               isSaveDisabled={isSaveDisabled}
+              savingRecordId={savingRecordId}
               formatValue={formatValue}
               formatDate={formatDate}
               showActions={showActionsColumn}

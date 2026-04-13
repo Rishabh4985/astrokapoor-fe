@@ -16,6 +16,7 @@ const AdminForgotPassword = () => {
     setLoading(true);
     try {
       const res = await axios.post(`${API_BASE}/admin/send-otp`, { email });
+      sessionStorage.setItem("adminResetEmail", email.trim());
 
       setMessage(
         res.data.message || "OTP sent to your email. Please check your inbox."

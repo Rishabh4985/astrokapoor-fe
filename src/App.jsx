@@ -11,7 +11,7 @@ import AdminForgotPassword from "./pages/admin/AdminForgotPassword";
 import AdminVerifyOtp from "./pages/admin/AdminVerifyOtp";
 
 function App() {
-  const { userRole } = useAuth();
+  const { userRole, isAuthenticated } = useAuth();
   return (
     <>
       <Routes>
@@ -43,9 +43,9 @@ function App() {
         <Route
           path="*"
           element={
-            userRole === "admin" ? (
+            isAuthenticated && userRole === "admin" ? (
               <Navigate to="/admin" replace />
-            ) : userRole === "seller" ? (
+            ) : isAuthenticated && userRole === "seller" ? (
               <Navigate to="/seller" replace />
             ) : (
               <Navigate to="/" replace />

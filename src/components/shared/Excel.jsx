@@ -1,15 +1,18 @@
-import React from "react";
+import React, { useState } from "react";
 import * as XLSX from "xlsx";
 import { toast } from "react-toastify";
 import { useAuth } from "../../context/AuthContext";
-import { Upload, FileDown } from "lucide-react";
+import { Upload, FileDown, Loader2 } from "lucide-react";
 import axios from "axios";
 
 const API_BASE = import.meta.env.VITE_API_URL;
 
 const Excel = ({ onImport, onExport }) => {
-  const { isAdmin, authToken } = useAuth();
+  const { isAdmin, authToken, logout } = useAuth();
   const showImport = isAdmin;
+  const [isImporting, setIsImporting] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const isBusy = isImporting || isExporting;
 
   const headerMap = {
     "Date of Payment": "dateOfPayment",
@@ -62,33 +65,7 @@ const Excel = ({ onImport, onExport }) => {
 
   const buildImportHeaderMap = () => {
     const map = {};
-    const aliasEntries = [
-      ...Object.entries(headerMap),
-      ["Mobile-1", "mobile1"],
-      ["Mobile-2", "mobile2"],
-      ["Email-1", "email1"],
-      ["Email-2", "email2"],
-      ["Handled By", "handleBy"],
-      ["Handler By", "handleBy"],
-      ["Transaction Id", "transactionId"],
-      ["Air Bill No", "airBillNo"],
-      ["Airbill No", "airBillNo"],
-      ["SKU No", "skuNo"],
-      ["Gem", "gems"],
-      ["Gemstone", "gems"],
-      ["Gem 1", "gems1"],
-      ["Gems-1", "gems1"],
-      ["Gem-1", "gems1"],
-      ["Gem 2", "gems2"],
-      ["Gems-2", "gems2"],
-      ["Gem-2", "gems2"],
-      ["Gem 3", "gems3"],
-      ["Gems-3", "gems3"],
-      ["Gem-3", "gems3"],
-      ["Gem 4", "gems4"],
-      ["Gems-4", "gems4"],
-      ["Gem-4", "gems4"],
-    ];
+    const aliasEntries = [...Object.entries(headerMap)];
 
     aliasEntries.forEach(([label, field]) => {
       const normalizedLabel = normalizeHeaderKey(label);
@@ -112,17 +89,6 @@ const Excel = ({ onImport, onExport }) => {
     importHeaderMap[normalizeHeaderKey(rawHeader)] || "";
 
   const allowedFields = Object.values(headerMap);
-
-  const normalizeService = (value) => {
-    const raw = (value || "").toString().trim();
-    const val = raw.toLowerCase();
-
-    if (["consultation", "consultations"].includes(val)) return "Consultation";
-    if (["product", "products"].includes(val)) return "Products";
-    if (["gemstone", "gemstones"].includes(val)) return "Gemstones";
-
-    return raw;
-  };
 
   const toValidDate = (year, month, day) => {
     const y = Number(year);
@@ -325,6 +291,13 @@ const Excel = ({ onImport, onExport }) => {
 
       return { inserted, attempted };
     } catch (err) {
+      const statusCode = err?.response?.status;
+      if (statusCode === 401 || statusCode === 403) {
+        toast.error(err?.response?.data?.message || "Session expired. Please log in again.");
+        logout();
+        throw err;
+      }
+
       const details = buildUploadErrorMessage(err);
       console.error(`Import upload failed: ${details}`);
       if (err?.response?.data) {
@@ -357,147 +330,147 @@ const Excel = ({ onImport, onExport }) => {
     }
   };
 
-  const handleFileUpload = (e) => {
-    const files = Array.from(e.target.files);
-    if (!files.length) return;
-    e.target.value = "";
+  const extractRecordsFromWorkbook = (workbook) => {
+    const recordsCollection = [];
 
-    const allRecords = [];
-    let filesProcessed = 0;
+    workbook.SheetNames.forEach((sheetName) => {
+      const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
+        header: 1,
+        defval: "",
+      });
 
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = async (evt) => {
-        try {
-          const bstr = evt.target.result;
-          const workbook = XLSX.read(bstr, { type: "binary" });
+      const rawHeaders = sheet[0];
+      if (!rawHeaders) return;
 
-          workbook.SheetNames.forEach((sheetName) => {
-            const sheet = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], {
-              header: 1,
-              defval: "",
-            });
+      const headerIndexMap = new Map();
+      rawHeaders.forEach((headerValue, index) => {
+        const fieldKey = resolveImportField(headerValue);
+        if (!fieldKey) return;
 
-            const rawHeaders = sheet[0];
-            if (!rawHeaders) return;
+        const existingIndexes = headerIndexMap.get(fieldKey) || [];
+        existingIndexes.push(index);
+        headerIndexMap.set(fieldKey, existingIndexes);
+      });
 
-            const headerIndexMap = new Map();
-            rawHeaders.forEach((headerValue, index) => {
-              const fieldKey = resolveImportField(headerValue);
-              if (!fieldKey) return;
+      if (headerIndexMap.size === 0) return;
 
-              const existingIndexes = headerIndexMap.get(fieldKey) || [];
-              existingIndexes.push(index);
-              headerIndexMap.set(fieldKey, existingIndexes);
-            });
+      const pickCellValueFromIndexes = (row, indexes = []) => {
+        if (!Array.isArray(indexes) || indexes.length === 0) return "";
 
-            if (headerIndexMap.size === 0) return;
+        const isPresent = (cell) => {
+          if (cell === null || cell === undefined) return false;
+          if (typeof cell === "string") return cell.trim() !== "";
+          return true;
+        };
 
-            const pickCellValueFromIndexes = (row, indexes = []) => {
-              if (!Array.isArray(indexes) || indexes.length === 0) return "";
-
-              const isPresent = (cell) => {
-                if (cell === null || cell === undefined) return false;
-                if (typeof cell === "string") return cell.trim() !== "";
-                return true;
-              };
-
-              for (const idx of indexes) {
-                const candidate = row[idx];
-                if (isPresent(candidate)) return candidate;
-              }
-
-              const fallback = row[indexes[0]];
-              return fallback ?? "";
-            };
-
-            const records = sheet
-              .slice(1)
-              .map((row) => {
-                const rowHasAnyData = Array.from(headerIndexMap.values()).some(
-                  (indexes) => {
-                    const cell = pickCellValueFromIndexes(row, indexes);
-                    if (cell === null || cell === undefined) return false;
-                    if (typeof cell === "string") return cell.trim() !== "";
-                    return true;
-                  },
-                );
-
-                if (!rowHasAnyData) return null;
-
-                const obj = {};
-                headerIndexMap.forEach((indexes, key) => {
-                  let value = pickCellValueFromIndexes(row, indexes);
-
-                  if (key === "dateOfPayment") {
-                    value = parseDateOfPayment(value);
-                  }
-
-                  if (["amount", "pendingAmount", "refund"].includes(key)) {
-                    const parsed = parseFloat(value);
-                    value = isNaN(parsed) ? 0 : parsed;
-                  }
-
-                  if (key === "country") {
-                    value = value.toString().trim().toLowerCase();
-                  }
-
-                  if (key === "service") {
-                    value = normalizeService(value);
-                  }
-                  obj[key] = value;
-                });
-                obj.category =
-                  sheetName.charAt(0).toUpperCase() +
-                  sheetName.slice(1).toLowerCase();
-
-                return obj;
-              })
-              .filter(Boolean);
-
-            allRecords.push(...records);
-          });
-
-          filesProcessed++;
-
-          if (filesProcessed === files.length) {
-            const sortedRecords = [...allRecords].sort((a, b) => {
-              const dateA = new Date(a.dateOfPayment || 0);
-              const dateB = new Date(b.dateOfPayment || 0);
-              return dateB - dateA;
-            });
-
-            if (!sortedRecords.length) {
-              toast.warn("No valid records found in the selected file.");
-              return;
-            }
-
-            const importSummary = await uploadRecordsToBackend(sortedRecords);
-
-            if (onImport) {
-              await onImport(sortedRecords);
-            }
-
-            if (importSummary.inserted === importSummary.attempted) {
-              toast.success(`Imported ${importSummary.inserted} records successfully.`);
-            } else {
-              toast.warn(
-                `Imported ${importSummary.inserted} of ${importSummary.attempted} records.`,
-              );
-            }
-          }
-        } catch (err) {
-          if (!err?.isAxiosError) {
-            toast.error("Error reading Excel file.");
-          }
-          console.error(err);
+        for (const idx of indexes) {
+          const candidate = row[idx];
+          if (isPresent(candidate)) return candidate;
         }
+
+        const fallback = row[indexes[0]];
+        return fallback ?? "";
       };
-      reader.readAsBinaryString(file);
+
+      const records = sheet
+        .slice(1)
+        .map((row) => {
+          const rowHasAnyData = Array.from(headerIndexMap.values()).some(
+            (indexes) => {
+              const cell = pickCellValueFromIndexes(row, indexes);
+              if (cell === null || cell === undefined) return false;
+              if (typeof cell === "string") return cell.trim() !== "";
+              return true;
+            },
+          );
+
+          if (!rowHasAnyData) return null;
+
+          const obj = {};
+          headerIndexMap.forEach((indexes, key) => {
+            let value = pickCellValueFromIndexes(row, indexes);
+
+            if (key === "dateOfPayment") {
+              value = parseDateOfPayment(value);
+            }
+
+            if (["amount", "pendingAmount", "refund"].includes(key)) {
+              const parsed = parseFloat(value);
+              value = isNaN(parsed) ? 0 : parsed;
+            }
+
+            if (key === "country") {
+              value = value.toString().trim().toLowerCase();
+            }
+
+            obj[key] = value;
+          });
+          obj.category =
+            sheetName.charAt(0).toUpperCase() + sheetName.slice(1).toLowerCase();
+
+          return obj;
+        })
+        .filter(Boolean);
+
+      recordsCollection.push(...records);
     });
+
+    return recordsCollection;
+  };
+
+  const handleFileUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length || isBusy) return;
+
+    setIsImporting(true);
+    try {
+      const fileRecords = await Promise.all(
+        files.map(async (file) => {
+          const buffer = await file.arrayBuffer();
+          const workbook = XLSX.read(buffer, { type: "array" });
+          return extractRecordsFromWorkbook(workbook);
+        }),
+      );
+
+      const allRecords = fileRecords.flat();
+      const sortedRecords = [...allRecords].sort((a, b) => {
+        const dateA = new Date(a.dateOfPayment || 0);
+        const dateB = new Date(b.dateOfPayment || 0);
+        return dateB - dateA;
+      });
+
+      if (!sortedRecords.length) {
+        toast.warn("No valid records found in the selected file.");
+        return;
+      }
+
+      const importSummary = await uploadRecordsToBackend(sortedRecords);
+
+      if (onImport) {
+        await onImport(sortedRecords);
+      }
+
+      if (importSummary.inserted === importSummary.attempted) {
+        toast.success(`Imported ${importSummary.inserted} records successfully.`);
+      } else {
+        toast.warn(
+          `Imported ${importSummary.inserted} of ${importSummary.attempted} records.`,
+        );
+      }
+    } catch (err) {
+      if (!err?.isAxiosError) {
+        toast.error("Error reading Excel file.");
+      }
+      console.error(err);
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   const handleExportClick = async () => {
+    if (isBusy) return;
+    setIsExporting(true);
     try {
       if (!onExport) {
         toast.warning("No records available to export");
@@ -614,30 +587,57 @@ const Excel = ({ onImport, onExport }) => {
     } catch (err) {
       toast.error("Failed to export Excel.");
       console.error(err);
+    } finally {
+      setIsExporting(false);
     }
   };
 
   return (
-    <div className="flex flex-wrap gap-4 mt-4">
+    <div className="flex flex-wrap items-center gap-4 mt-4" aria-busy={isBusy}>
+      {isBusy && (
+        <span className="text-sm font-medium text-slate-600">
+          {isImporting ? "Importing records..." : "Preparing export..."}
+        </span>
+      )}
       {showImport && (
-        <label className="flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-500 hover:from-orange-700 hover:to-red-600 text-white px-5 py-2.5 rounded-xl font-medium cursor-pointer transition-all shadow-md">
-          <Upload className="w-5 h-5" />
-          Import Excel
+        <label
+          className={`flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-orange-600 to-red-500 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md ${
+            isBusy
+              ? "cursor-not-allowed opacity-70"
+              : "cursor-pointer hover:from-orange-700 hover:to-red-600"
+          }`}
+        >
+          {isImporting ? (
+            <Loader2 className="w-5 h-5 animate-spin" />
+          ) : (
+            <Upload className="w-5 h-5" />
+          )}
+          {isImporting ? "Importing..." : "Import Excel"}
           <input
             type="file"
             accept=".xlsx, .xls"
             multiple
             onChange={handleFileUpload}
+            disabled={isBusy}
             className="hidden"
           />
         </label>
       )}
       <button
         onClick={handleExportClick}
-        className="flex items-center gap-2 w-full sm:w-auto bg-gradient-to-r from-yellow-600 to-orange-500 hover:from-yellow-700 hover:to-orange-600 text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md"
+        disabled={isBusy}
+        className={`flex items-center gap-2 w-full sm:w-auto text-white px-5 py-2.5 rounded-xl font-medium transition-all shadow-md ${
+          isBusy
+            ? "cursor-not-allowed bg-slate-400"
+            : "bg-gradient-to-r from-yellow-600 to-orange-500 hover:from-yellow-700 hover:to-orange-600"
+        }`}
       >
-        <FileDown className="w-5 h-5" />
-        Export to Excel
+        {isExporting ? (
+          <Loader2 className="w-5 h-5 animate-spin" />
+        ) : (
+          <FileDown className="w-5 h-5" />
+        )}
+        {isExporting ? "Exporting..." : "Export to Excel"}
       </button>
     </div>
   );

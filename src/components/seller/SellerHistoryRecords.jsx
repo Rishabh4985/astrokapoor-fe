@@ -7,13 +7,17 @@ const SellerHistoryRecords = ({
   history = [],
   loading = false,
   formatDate,
+  showActions = true,
 }) => {
+  const fullColSpan = headers.length + 1 + (showActions ? 1 : 0);
+  const detailColSpan = Math.max(1, headers.length - (showActions ? 0 : 1));
+
   if (loading) {
     return (
       <tr className="bg-blue-50 border-b">
-        <td colSpan={headers.length + 2} className="p-4 text-center">
+        <td colSpan={fullColSpan} className="p-4 text-center">
           <div className="flex items-center gap-2 text-sm text-blue-600 justify-center">
-            <div className="animate-spin">⏳</div>
+            <div className="animate-spin">...</div>
             Loading history...
           </div>
         </td>
@@ -24,7 +28,7 @@ const SellerHistoryRecords = ({
   if (!history || history.length === 0) {
     return (
       <tr className="bg-gray-50 border-b">
-        <td colSpan={headers.length + 2} className="p-4 text-center">
+        <td colSpan={fullColSpan} className="p-4 text-center">
           <div className="flex items-center gap-2 text-sm text-gray-600 justify-center">
             <AlertCircle className="w-4 h-4" />
             No changes recorded for this record yet.
@@ -41,8 +45,8 @@ const SellerHistoryRecords = ({
           idx === 0
             ? "bg-red-50 border-red-200"
             : idx === 1
-            ? "bg-orange-50 border-orange-200"
-            : "bg-yellow-50 border-yellow-200";
+              ? "bg-orange-50 border-orange-200"
+              : "bg-yellow-50 border-yellow-200";
 
         const label = idx === 0 ? "LATEST" : idx === 1 ? "PREV" : "OLD";
 
@@ -51,7 +55,6 @@ const SellerHistoryRecords = ({
             key={`${recordId}-history-${entry.changedAt}-${idx}`}
             className={`border-2 ${rowColor}`}
           >
-            {/* Left label */}
             <td className="px-3 py-2 border text-xs bg-orange-100 text-orange-900">
               <div className="font-semibold">{label}</div>
               <div className="text-[11px] text-gray-700 mt-1">
@@ -59,8 +62,7 @@ const SellerHistoryRecords = ({
               </div>
             </td>
 
-            {/* History content */}
-            <td colSpan={headers.length}>
+            <td colSpan={detailColSpan}>
               <div className="flex flex-col gap-1 text-sm">
                 {entry.changes?.length ? (
                   <ul className="space-y-1">
@@ -72,7 +74,7 @@ const SellerHistoryRecords = ({
                         <span className="text-red-500 line-through">
                           {formatDate(change.oldValue)}
                         </span>
-                        <span className="text-gray-400">→</span>
+                        <span className="text-gray-400">-&gt;</span>
                         <span className="text-green-700 font-semibold">
                           {formatDate(change.newValue)}
                         </span>
@@ -95,7 +97,6 @@ const SellerHistoryRecords = ({
               </div>
             </td>
 
-            {/* Timestamp */}
             <td className="px-3 py-2 border text-xs font-bold text-white bg-gradient-to-r from-orange-500 to-orange-600">
               {new Date(entry.changedAt).toLocaleString("en-IN")}
             </td>

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import AdminSidebar from "../components/admin/AdminSidebar";
-import AdminProvider from "../context/AdminProvider";
 import AdminNavbar from "../components/admin/AdminNavbar";
 import { Outlet } from "react-router-dom";
 
@@ -37,7 +36,6 @@ const AdminLayout = () => {
   };
 
   return (
-    <AdminProvider>
       <div className="flex min-h-screen bg-slate-100">
         {isMobile && isSidebarOpen && (
           <div
@@ -75,7 +73,6 @@ const AdminLayout = () => {
           </main>
         </div>
       </div>
-    </AdminProvider>
   );
 };
 

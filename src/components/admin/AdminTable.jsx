@@ -17,11 +17,39 @@ const AdminTable = ({
   renderActions,
   showActions = true,
 }) => {
+  const multiSelectFields = new Set([
+    "service",
+    "handleBy",
+    "gems",
+    "gems1",
+    "gems2",
+    "gems3",
+    "gems4",
+  ]);
+
   const getOptionValue = (option) => {
     if (option && typeof option === "object") {
       return option.value ?? "";
     }
     return option ?? "";
+  };
+
+  const getOptionLabel = (option) => {
+    if (option && typeof option === "object") {
+      return option.label ?? option.value ?? "";
+    }
+    return option ?? "";
+  };
+
+  const toArrayValue = (value) => {
+    if (Array.isArray(value)) {
+      return value
+        .map((item) => (item === undefined || item === null ? "" : String(item).trim()))
+        .filter(Boolean);
+    }
+
+    if (value === undefined || value === null || value === "") return [];
+    return [String(value).trim()].filter(Boolean);
   };
 
   const getSelectValue = (rawValue, options = []) => {
@@ -34,6 +62,22 @@ const AdminTable = ({
     );
 
     return matchedOption ? getOptionValue(matchedOption) : scalar;
+  };
+
+  const getColumnMinWidth = (key, options = []) => {
+    const headerLength = String(getFieldLabel(key) || key).length;
+    const longestOptionLength = options.reduce((maxLength, option) => {
+      const text = String(getOptionLabel(option) || "");
+      return Math.max(maxLength, text.length);
+    }, 0);
+
+    const base = multiSelectFields.has(key) ? 18 : 10;
+    const fromOptions = longestOptionLength > 0
+      ? Math.min(44, Math.ceil(longestOptionLength * 0.8) + 8)
+      : 0;
+    const widthInCh = Math.max(base, headerLength + 4, fromOptions);
+
+    return { minWidth: `${widthInCh}ch` };
   };
 
   const toDateInputValue = (value) => {
@@ -75,7 +119,7 @@ const AdminTable = ({
 
   return (
     <div className="records-scrollbar w-full max-h-[70vh] overflow-auto rounded-xl border border-slate-200 bg-white shadow-sm">
-      <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
+      <table className="min-w-max table-auto divide-y divide-slate-200 text-sm">
         <thead className="sticky top-0 z-20 bg-gradient-to-r from-orange-100 via-amber-50 to-orange-100 text-orange-900">
           <tr>
             {showActions && (
@@ -84,18 +128,22 @@ const AdminTable = ({
               </th>
             )}
 
-            {headers.map((key) => (
-              <th
-                key={key}
-                className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-center font-semibold"
-                title={getFieldLabel(key)}
-              >
-                {getFieldLabel(key)}
-                {requiredFields.includes(key) && (
-                  <span className="text-red-500 ml-1">*</span>
-                )}
-              </th>
-            ))}
+            {headers.map((key) => {
+              const headerOptions = getDropdownOptionsForField(key);
+              return (
+                <th
+                  key={key}
+                  className="whitespace-nowrap border-r border-slate-200 px-4 py-3 text-center font-semibold"
+                  title={getFieldLabel(key)}
+                  style={getColumnMinWidth(key, headerOptions)}
+                >
+                  {getFieldLabel(key)}
+                  {requiredFields.includes(key) && (
+                    <span className="text-red-500 ml-1">*</span>
+                  )}
+                </th>
+              );
+            })}
           </tr>
         </thead>
 
@@ -138,6 +186,11 @@ const AdminTable = ({
                       dropdownOptions.length > 0 || isDropdownField?.(key);
                     const isDisabledDropdown =
                       key === "state" && dropdownOptions.length === 0;
+                    const isMultiSelectField = multiSelectFields.has(key);
+                    const selectedMultiValues = toArrayValue(
+                      draft[key] ?? record[key] ?? [],
+                    );
+                    const selectedMultiValueSet = new Set(selectedMultiValues);
 
                     return (
                       <td
@@ -146,34 +199,93 @@ const AdminTable = ({
                           hasError ? "bg-red-50" : ""
                         }`}
                         title={hasError ? hasError : currentValue}
+                        style={getColumnMinWidth(key, dropdownOptions)}
                       >
                         {isEditing ? (
                           isEditable ? (
                             shouldRenderDropdown ? (
-                              <select
-                                value={getSelectValue(draft[key] ?? record[key] ?? "", dropdownOptions)}
-                                onChange={(e) =>
-                                  handleEditChange(key, e.target.value)
-                                }
-                                disabled={isDisabledDropdown}
-                                className={`w-full rounded-lg border px-2 py-1 text-sm focus:ring-2 ${
-                                  hasError
-                                    ? "border-red-500 focus:ring-red-400"
-                                    : "border-orange-200 focus:border-orange-400 focus:ring-orange-200"
-                                } disabled:bg-slate-100`}
-                              >
-                                <option value="">
-                                  {`Select ${getFieldLabel(key)}`}
-                                </option>
-                                {dropdownOptions.map((opt, idxOpt) => (
-                                  <option
-                                    key={`${opt.value}-${idxOpt}`}
-                                    value={opt.value}
+                              isMultiSelectField ? (
+                                <div className="space-y-1.5 text-left">
+                                  <div className="flex min-h-8 flex-wrap gap-1">
+                                    {selectedMultiValues.length > 0 ? (
+                                      selectedMultiValues.map((value) => (
+                                        <button
+                                          key={value}
+                                          type="button"
+                                          onClick={() =>
+                                            handleEditChange(
+                                              key,
+                                              selectedMultiValues.filter((item) => item !== value),
+                                            )
+                                          }
+                                          className="inline-flex items-center gap-1 rounded-md border border-orange-200 bg-orange-50 px-2 py-0.5 text-xs text-orange-800 hover:bg-orange-100"
+                                          title={`Remove ${value}`}
+                                        >
+                                          <span>{value}</span>
+                                          <span className="text-[10px] leading-none">x</span>
+                                        </button>
+                                      ))
+                                    ) : (
+                                      <span className="text-xs text-slate-400">No selection</span>
+                                    )}
+                                  </div>
+
+                                  <select
+                                    value=""
+                                    onChange={(e) => {
+                                      const selectedValue = e.target.value;
+                                      if (!selectedValue) return;
+                                      if (selectedMultiValueSet.has(selectedValue)) return;
+                                      handleEditChange(key, [...selectedMultiValues, selectedValue]);
+                                    }}
+                                    disabled={isDisabledDropdown}
+                                    className={`w-full rounded-lg border px-2 py-1 text-sm focus:ring-2 ${
+                                      hasError
+                                        ? "border-red-500 focus:ring-red-400"
+                                        : "border-orange-200 focus:border-orange-400 focus:ring-orange-200"
+                                    } disabled:bg-slate-100`}
                                   >
-                                    {opt.label}
+                                    <option value="">{`Add ${getFieldLabel(key)}`}</option>
+                                    {dropdownOptions.map((opt, idxOpt) => {
+                                      const optionValue = getOptionValue(opt);
+                                      if (selectedMultiValueSet.has(optionValue)) return null;
+                                      return (
+                                        <option
+                                          key={`${optionValue}-${idxOpt}`}
+                                          value={optionValue}
+                                        >
+                                          {getOptionLabel(opt)}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              ) : (
+                                <select
+                                  value={getSelectValue(draft[key] ?? record[key] ?? "", dropdownOptions)}
+                                  onChange={(e) =>
+                                    handleEditChange(key, e.target.value)
+                                  }
+                                  disabled={isDisabledDropdown}
+                                  className={`w-full rounded-lg border px-2 py-1 text-sm focus:ring-2 ${
+                                    hasError
+                                      ? "border-red-500 focus:ring-red-400"
+                                      : "border-orange-200 focus:border-orange-400 focus:ring-orange-200"
+                                  } disabled:bg-slate-100`}
+                                >
+                                  <option value="">
+                                    {`Select ${getFieldLabel(key)}`}
                                   </option>
-                                ))}
-                              </select>
+                                  {dropdownOptions.map((opt, idxOpt) => (
+                                    <option
+                                      key={`${opt.value}-${idxOpt}`}
+                                      value={opt.value}
+                                    >
+                                      {opt.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              )
                             ) : (
                               <input
                                 type={

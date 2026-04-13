@@ -8,9 +8,9 @@ import SellerSalesLookup from "../pages/seller/SellerSalesLookup";
 import { useAuth } from "../context/AuthContext";
 
 const SellerRoutes = () => {
-  const { userRole } = useAuth();
+  const { userRole, isAuthenticated } = useAuth();
 
-  if (userRole !== "seller") {
+  if (!isAuthenticated || userRole !== "seller") {
     return <Navigate to="/" replace />;
   }
 

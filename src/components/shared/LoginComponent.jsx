@@ -10,6 +10,8 @@ const LoginComponent = ({ onLogin }) => {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
+  const [attemptsRemaining, setAttemptsRemaining] = useState(null);
+  const [retryAfterSeconds, setRetryAfterSeconds] = useState(null);
   const navigate = useNavigate();
 
   const API_URL = import.meta.env.VITE_API_URL;
@@ -18,6 +20,8 @@ const LoginComponent = ({ onLogin }) => {
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    setAttemptsRemaining(null);
+    setRetryAfterSeconds(null);
 
     try {
       const response = await axios.post(`${API_URL}/login`, {
@@ -33,21 +37,35 @@ const LoginComponent = ({ onLogin }) => {
         return;
       }
 
-      localStorage.setItem("authToken", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("userRole", role);
-      
-      // Also store in sessionStorage for current session isolation
-      sessionStorage.setItem("sessionAuthToken", token);
-      sessionStorage.setItem("sessionUserRole", role);
-
       setError("");
+      setAttemptsRemaining(null);
+      setRetryAfterSeconds(null);
       onLogin(role, token, user);
     } catch (err) {
-      console.log(err);
-      setError(err?.response?.data?.message || "Invalid Credentials Try Again");
+      const data = err?.response?.data || {};
+      const statusCode = err?.response?.status;
+      const apiMessage = data?.message || "Invalid Credentials Try Again";
+      const remaining =
+        Number.isFinite(data?.attemptsRemaining) ? data.attemptsRemaining : null;
+      const retrySeconds =
+        Number.isFinite(data?.retryAfterSeconds) ? data.retryAfterSeconds : null;
+
+      setError(apiMessage);
+      setAttemptsRemaining(remaining);
+      setRetryAfterSeconds(retrySeconds);
+
+      if (statusCode === 429 && retrySeconds) {
+        const minutes = Math.ceil(retrySeconds / 60);
+        setError(`${apiMessage} Please retry in ~${minutes} minute(s).`);
+      }
     }
   };
+
+  const showAttemptsRemaining =
+    Number.isFinite(attemptsRemaining) && attemptsRemaining >= 0;
+  const showRetryTimer =
+    Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-yellow-100 p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
@@ -120,6 +138,19 @@ const LoginComponent = ({ onLogin }) => {
           </div>
 
           {error && <p className="text-red-600 text-sm">{error}</p>}
+          {showAttemptsRemaining && (
+            <p className="text-amber-700 text-sm">
+              Attempts remaining: <span className="font-semibold">{attemptsRemaining}</span>
+            </p>
+          )}
+          {showRetryTimer && (
+            <p className="text-amber-700 text-sm">
+              Retry after:{" "}
+              <span className="font-semibold">
+                {Math.ceil(retryAfterSeconds / 60)} minute(s)
+              </span>
+            </p>
+          )}
 
           <button
             type="submit"

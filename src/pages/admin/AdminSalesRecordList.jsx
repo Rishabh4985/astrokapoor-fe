@@ -9,15 +9,13 @@ import {
   hiddenFields,
   nonEditableFields,
   categoryOptionsConfig,
+  gemFieldOrder,
 } from "../../utils/utils.js";
 import Filters from "../../components/shared/Filters";
 import AdminPagination from "../../components/admin/AdminPagination.jsx";
 import AdminTable from "../../components/admin/AdminTable.jsx";
 import OptionsContext from "../../context/OptionsContext";
 import { formatValue } from "../../utils/formatter.js";
-import {
-  gemFieldOrder,
-} from "../../utils/gemsHierarchyUtils.js";
 
 const AdminSalesRecordList = () => {
   const {
@@ -245,7 +243,8 @@ const AdminSalesRecordList = () => {
 
     try {
       setIsSaving(true);
-      await updateRecord(editingId, partial);
+      const didUpdate = await updateRecord(editingId, partial);
+      if (!didUpdate) return;
       toast.success("Record updated successfully!");
       cancelEdit();
       setFieldErrors({});
@@ -264,7 +263,8 @@ const AdminSalesRecordList = () => {
 
     try {
       setIsDeleting(id);
-      await deleteRecord(id);
+      const didDelete = await deleteRecord(id);
+      if (!didDelete) return;
       toast.success("Record deleted successfully!");
     } catch (err) {
       toast.error(err || "Failed to delete record");

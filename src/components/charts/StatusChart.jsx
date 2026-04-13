@@ -34,10 +34,6 @@ const getStatusColor = (name = "", fallbackIndex = 0) => {
   const key = normalizeStatusKey(name);
 
   if (key in STATUS_COLOR_MAP) return STATUS_COLOR_MAP[key];
-  if (key.includes("consultation")) return STATUS_COLOR_MAP["consultation done"];
-  if (key.includes("refund")) return STATUS_COLOR_MAP.refunded;
-  if (key.includes("pending")) return STATUS_COLOR_MAP.pending;
-  if (key.includes("paid")) return STATUS_COLOR_MAP.paid;
 
   return FALLBACK_STATUS_COLORS[fallbackIndex % FALLBACK_STATUS_COLORS.length];
 };
@@ -63,12 +59,7 @@ const StatusChart = ({ data = [], loading = false }) => {
           const name = item?.name || "Unknown";
           const value = Number(item?.value) || 0;
           const statusKey = normalizeStatusKey(name);
-          const isKnownStatus =
-            statusKey in STATUS_COLOR_MAP ||
-            statusKey.includes("consultation") ||
-            statusKey.includes("refund") ||
-            statusKey.includes("pending") ||
-            statusKey.includes("paid");
+          const isKnownStatus = statusKey in STATUS_COLOR_MAP;
           const color = getStatusColor(name, fallbackIndex);
 
           if (!isKnownStatus) fallbackIndex += 1;

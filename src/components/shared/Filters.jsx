@@ -1,4 +1,4 @@
-﻿import { useState, useMemo, useEffect, useContext, useRef } from "react";
+import { useState, useMemo, useEffect, useContext, useRef, useCallback } from "react";
 import { Search, X, Sliders, Check, ChevronDown } from "lucide-react";
 import OptionsContext from "../../context/OptionsContext";
 import { debounce } from "../../utils/debounce";
@@ -32,25 +32,94 @@ const Filters = ({
   const [openMultiDropdowns, setOpenMultiDropdowns] = useState({});
   const [optionSearch, setOptionSearch] = useState({});
 
-  const [localFilters, setLocalFilters] = useState({
-    query: filters.query || "",
-    category: filters.category || "all",
-    dateType: "all",
-    dateValue: "",
-    dateValueEnd: "",
-    ...categoryOptionsConfig.reduce((acc, { key }) => {
-      if (multiSelectFields.includes(key)) {
-        acc[key] = Array.isArray(filters[key])
-          ? filters[key]
-          : filters[key]
-            ? [filters[key]]
-            : [];
-      } else {
-        acc[key] = filters[key] || "";
+  const buildLocalFiltersFromContext = useCallback(
+    (incomingFilters = {}) => {
+      const normalized = {
+        query: incomingFilters.query || "",
+        category: incomingFilters.category || "all",
+        dateType: "all",
+        dateValue: "",
+        dateValueEnd: "",
+      };
+
+      if (incomingFilters.startDate || incomingFilters.endDate) {
+        normalized.dateType = "range";
+        normalized.dateValue = incomingFilters.startDate || "";
+        normalized.dateValueEnd = incomingFilters.endDate || "";
+      } else if (incomingFilters.date) {
+        normalized.dateType = "date";
+        normalized.dateValue = incomingFilters.date;
+      } else if (incomingFilters.month) {
+        normalized.dateType = "month";
+        normalized.dateValue = incomingFilters.month;
+      } else if (incomingFilters.year) {
+        normalized.dateType = "year";
+        normalized.dateValue = incomingFilters.year;
       }
-      return acc;
-    }, {}),
-  });
+
+      categoryOptionsConfig.forEach(({ key }) => {
+        if (multiSelectFields.includes(key)) {
+          const value = incomingFilters[key];
+          normalized[key] = Array.isArray(value) ? value : value ? [value] : [];
+          return;
+        }
+
+        if (key === "category") {
+          normalized[key] = incomingFilters[key] || "all";
+          return;
+        }
+
+        normalized[key] = incomingFilters[key] || "";
+      });
+
+      return normalized;
+    },
+    [categoryOptionsConfig, multiSelectFields],
+  );
+
+  const [localFilters, setLocalFilters] = useState(() =>
+    buildLocalFiltersFromContext(filters),
+  );
+
+  const normalizeOutgoingFilters = useCallback((sourceFilters = {}) => {
+    const mapped = { ...sourceFilters };
+
+    if (mapped.dateType === "date") mapped.date = mapped.dateValue;
+
+    if (mapped.dateType === "range") {
+      mapped.startDate = mapped.dateValue;
+      mapped.endDate = mapped.dateValueEnd;
+    }
+
+    if (mapped.dateType === "month") mapped.month = mapped.dateValue;
+    if (mapped.dateType === "year") mapped.year = mapped.dateValue;
+
+    delete mapped.dateType;
+    delete mapped.dateValue;
+    delete mapped.dateValueEnd;
+
+    const normalized = {};
+    Object.entries(mapped).forEach(([key, value]) => {
+      if (Array.isArray(value)) {
+        const cleaned = value
+          .map((item) => item?.toString().trim())
+          .filter(Boolean);
+        if (cleaned.length > 0) {
+          normalized[key] = cleaned;
+        }
+        return;
+      }
+
+      if (value === null || value === undefined) return;
+
+      const stringValue = value.toString().trim();
+      if (!stringValue || stringValue.toLowerCase() === "all") return;
+
+      normalized[key] = stringValue;
+    });
+
+    return normalized;
+  }, []);
 
   const getOptionValue = (option) => {
     if (typeof option === "string") return option;
@@ -116,12 +185,16 @@ const Filters = ({
   }, []);
 
   useEffect(() => {
-    const incomingQuery = filters.query || "";
-    setSearchInput(incomingQuery);
-    setLocalFilters((prev) =>
-      prev.query === incomingQuery ? prev : { ...prev, query: incomingQuery },
-    );
-  }, [filters.query]);
+    const incoming = buildLocalFiltersFromContext(filters);
+    const incomingSerialized = JSON.stringify(incoming);
+
+    setSearchInput((prev) => (prev === incoming.query ? prev : incoming.query));
+
+    setLocalFilters((prev) => {
+      if (JSON.stringify(prev) === incomingSerialized) return prev;
+      return incoming;
+    });
+  }, [filters, buildLocalFiltersFromContext]);
 
   useEffect(() => {
     const handleOutsideClick = (event) => {
@@ -183,25 +256,16 @@ const Filters = ({
   };
 
   useEffect(() => {
-    const mapped = { ...localFilters };
+    const nextFilters = normalizeOutgoingFilters(localFilters);
+    const currentFilters = normalizeOutgoingFilters(filters || {});
 
-    if (mapped.dateType === "date") mapped.date = mapped.dateValue;
-
-    if (mapped.dateType === "range") {
-      mapped.startDate = mapped.dateValue;
-      mapped.endDate = mapped.dateValueEnd;
+    if (JSON.stringify(nextFilters) === JSON.stringify(currentFilters)) {
+      return;
     }
 
-    if (mapped.dateType === "month") mapped.month = mapped.dateValue;
-    if (mapped.dateType === "year") mapped.year = mapped.dateValue;
-
-    delete mapped.dateType;
-    delete mapped.dateValue;
-    delete mapped.dateValueEnd;
-
-    setFilters(mapped);
+    setFilters(nextFilters);
     goToPage(1);
-  }, [localFilters, setFilters, goToPage]);
+  }, [localFilters, filters, normalizeOutgoingFilters, setFilters, goToPage]);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -533,3 +597,5 @@ const Filters = ({
 };
 
 export default Filters;
+
+
