@@ -1,5 +1,5 @@
 export const nonEditableFields = [
-  "transactionId",
+  // "transactionId",
   // "dateOfPayment",
   "handlerId",
 ];
