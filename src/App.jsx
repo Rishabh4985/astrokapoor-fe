@@ -25,18 +25,26 @@ function App() {
         <Route
           path="/admin/*"
           element={
-            <AdminProvider>
-              <AdminRoutes />
-            </AdminProvider>
+            isAuthenticated && userRole === "admin" ? (
+              <AdminProvider>
+                <AdminRoutes />
+              </AdminProvider>
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
 
         <Route
           path="/seller/*"
           element={
-            <SellerProvider>
-              <SellerRoutes />
-            </SellerProvider>
+            isAuthenticated && userRole === "seller" ? (
+              <SellerProvider>
+                <SellerRoutes />
+              </SellerProvider>
+            ) : (
+              <Navigate to="/" replace />
+            )
           }
         />
 
